@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:video_downloader_reborn/core/theme.dart';
-import 'package:video_downloader_reborn/ui/screens/home_screen.dart';
+import 'package:auvid/core/theme.dart';
+import 'package:auvid/ui/screens/home_screen.dart';
 
 void main() {
   runApp(const VideoDownloaderApp());
@@ -12,7 +12,7 @@ class VideoDownloaderApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Video Downloader Reborn',
+      title: 'auvid',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme, // <--- Applying your custom theme
       home: const HomeScreen(),

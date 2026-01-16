@@ -1,4 +1,6 @@
-# video_downloader_reborn
+# auvid
+
+A beautiful, modern audio and video downloader built with Flutter.
 
 A new Flutter project.
 

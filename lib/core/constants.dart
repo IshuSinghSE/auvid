@@ -29,7 +29,7 @@ class AppConstants {
   static const String defaultQuality = '720';
   
   // Text
-  static const String appTitle = 'Downloader.';
+  static const String appTitle = 'auvid';
   static const String appSubtitle = 'Paste a link. Get the file. Simple.';
   static const String urlHint = 'https://youtube.com/watch?v=...';
   

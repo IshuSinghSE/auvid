@@ -1,4 +1,4 @@
-/// Data models for the video downloader application
+/// Data models for auvid
 
 enum DownloadMode { audio, video }
 
