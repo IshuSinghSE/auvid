@@ -7,12 +7,7 @@ class DownloadService {
   // Get comprehensive video information including available formats
   Future<VideoInfo?> getVideoInfo(String url) async {
     final String binaryPath = _getBinaryPath();
-
-    final binary = File(binaryPath);
-    if (!binary.existsSync()) {
-      throw Exception('Missing Component: yt-dlp binary not found at $binaryPath');
-    }
-
+    
     // Ensure binary has execute permissions
     await _ensureExecutablePermissions(binaryPath);
 
@@ -123,13 +118,6 @@ class DownloadService {
     String audioFormat = 'mp3',
   }) async* {
     final String binaryPath = _getBinaryPath();
-
-    final binary = File(binaryPath);
-    if (!binary.existsSync()) {
-      throw Exception('Missing Component: yt-dlp binary not found at $binaryPath');
-    }
-
-    // Ensure binary has execute permissions
     await _ensureExecutablePermissions(binaryPath);
 
     // Build the command with format preferences
@@ -233,12 +221,7 @@ class DownloadService {
   Stream<double> downloadVideo(String url, String quality) async* {
     // Locate the yt-dlp binary
     final String binaryPath = _getBinaryPath();
-
-    // Self-healing check: verify binary exists
-    final binary = File(binaryPath);
-    if (!binary.existsSync()) {
-      throw Exception('Missing Component: yt-dlp binary not found at $binaryPath');
-    }
+    await _ensureExecutablePermissions(binaryPath);
 
     // Build the command
     final args = [
@@ -280,17 +263,19 @@ class DownloadService {
   String _getBinaryPath() {
     if (Platform.isWindows) {
       return 'bin/yt-dlp.exe';
+    } else if (Platform.isMacOS) {
+      return 'bin/yt-dlp_macos';
     } else {
-      return 'bin/yt-dlp';
+      return 'bin/yt-dlp_linux';
     }
   }
 
   Future<void> _ensureExecutablePermissions(String binaryPath) async {
     if (!Platform.isWindows) {
-      final binary = File(binaryPath);
-      if (binary.existsSync()) {
-        // Make the binary executable using chmod
+      try {
         await Process.run('chmod', ['+x', binaryPath]);
+      } catch (e) {
+        // Permissions already set or chmod not available
       }
     }
   }

@@ -7,6 +7,7 @@ import '../widgets/glass_input.dart';
 import '../widgets/action_button.dart';
 import '../widgets/thumbnail_preview.dart';
 import '../widgets/cool_progress_bar.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -57,6 +58,21 @@ class _InputScreenState extends State<InputScreen> {
     final provider = Provider.of<DownloadProvider>(context);
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+            tooltip: 'Settings',
+          ),
+        ],
+      ),
       body: Center(
         child: Container(
           width: AppConstants.inputScreenWidth,
@@ -65,19 +81,36 @@ class _InputScreenState extends State<InputScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                AppConstants.appTitle,
-                style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -1.5,
+              Row(
+                children: [
+                  Image.asset(
+                    'assets/images/logo_icon.png',
+                    width: 128,
+                    height: 128,
+                  ),
+                  const SizedBox(width: AppConstants.spacingMedium),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppConstants.appTitle,
+                          style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: -1.5,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          AppConstants.appSubtitle,
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                color: Colors.grey,
+                              ),
+                        ),
+                      ],
                     ),
-              ),
-              const SizedBox(height: AppConstants.spacingSmall),
-              Text(
-                AppConstants.appSubtitle,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Colors.grey,
-                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: AppConstants.spacingXXLarge),
               GlassInput(
