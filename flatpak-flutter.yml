@@ -34,8 +34,9 @@ modules:
       - install -Dm644 packaging/linux/${FLATPAK_ID}.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
     sources:
       - type: git
-        url: .
+        url: https://github.com/IshuSinghSE/auvid.git
+        branch: master
       - type: git
         url: https://github.com/flutter/flutter.git
-        tag: 3.27.1
+        tag: 3.38.5
         dest: flutter
