@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
-import '../../core/constants.dart';
+import '../../core/theme.dart';
 import '../../providers/settings_provider.dart';
 import 'about_screen.dart';
 
@@ -13,96 +13,123 @@ class SettingsScreen extends StatelessWidget {
     return Consumer<SettingsProvider>(
       builder: (context, settings, _) {
         return Scaffold(
+          backgroundColor: AppTheme.background,
           appBar: AppBar(
+            backgroundColor: Colors.transparent,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back),
-              onPressed: () => Navigator.of(context).pop(),
-              tooltip: 'Back',
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
             ),
-            title: const Text('Settings'),
+            title: const Text(
+              "Settings",
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
           body: Center(
             child: Container(
-              constraints: const BoxConstraints(maxWidth: 700),
+              constraints: const BoxConstraints(maxWidth: 800),
               child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  vertical: AppConstants.spacingLarge,
-                  horizontal: AppConstants.spacingXLarge,
-                ),
+                padding: const EdgeInsets.all(24),
                 children: [
-                  const SizedBox(height: AppConstants.spacingMedium),
-                  _buildSectionHeader(context, 'General'),
-                  const SizedBox(height: AppConstants.spacingSmall),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.folder_outlined,
-                    title: 'Download Location',
-                    subtitle: settings.getDisplayPath(),
-                    onTap: () => _selectDownloadFolder(context, settings),
+                  // GENERAL SECTION
+                  _buildSectionHeader("GENERAL"),
+                  _buildSettingsCard(
+                    children: [
+                      _buildTile(
+                        icon: Icons.folder_open_rounded,
+                        title: "Download Location",
+                        subtitle: settings.getDisplayPath(),
+                        onTap: () => _selectDownloadFolder(context, settings),
+                      ),
+                      _buildDivider(),
+                      _buildDropdownTile(
+                        icon: Icons.hd_outlined,
+                        title: "Default Quality",
+                        value: settings.defaultQuality,
+                        items: settings.qualityOptions,
+                        onChanged: (val) {
+                          if (val != null) settings.setDefaultQuality(val);
+                        },
+                      ),
+                      _buildDivider(),
+                      _buildDropdownTile(
+                        icon: Icons.audio_file_outlined,
+                        title: "Default Audio Format",
+                        value: settings.defaultAudioFormat.toUpperCase(),
+                        items: settings.audioFormatOptions.map((e) => e.toUpperCase()).toList(),
+                        onChanged: (val) {
+                          if (val != null) settings.setDefaultAudioFormat(val.toLowerCase());
+                        },
+                      ),
+                    ],
                   ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.high_quality,
-                    title: 'Default Quality',
-                    subtitle: settings.defaultQuality,
-                    onTap: () => _showQualityPicker(context, settings),
+
+                  const SizedBox(height: 32),
+
+                  // APPEARANCE SECTION
+                  _buildSectionHeader("APPEARANCE"),
+                  _buildSettingsCard(
+                    children: [
+                      _buildSwitchTile(
+                        icon: Icons.dark_mode_outlined,
+                        title: "Dark Mode",
+                        subtitle: "Uses the Auvid minimal theme",
+                        value: settings.darkMode,
+                        onChanged: (val) => settings.setDarkMode(val),
+                      ),
+                      _buildDivider(),
+                      _buildTile(
+                        icon: Icons.palette_outlined,
+                        title: "Accent Color",
+                        subtitle: "Auvid Purple",
+                        trailing: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.audio_file_outlined,
-                    title: 'Default Audio Format',
-                    subtitle: settings.defaultAudioFormat.toUpperCase(),
-                    onTap: () => _showAudioFormatPicker(context, settings),
+
+                  const SizedBox(height: 32),
+
+                  // SYSTEM & ABOUT
+                  _buildSectionHeader("SYSTEM"),
+                  _buildSettingsCard(
+                    children: [
+                      _buildTile(
+                        icon: Icons.terminal_rounded,
+                        title: "Engine Version",
+                        subtitle: "yt-dlp (bundled)",
+                        trailing: const Text(
+                          "Stable",
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      _buildDivider(),
+                      _buildTile(
+                        icon: Icons.info_outline_rounded,
+                        title: "About Auvid",
+                        subtitle: "v1.0.0 • Built with Flutter",
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AboutScreen()),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: AppConstants.spacingMedium),
-                  const Divider(height: 1),
-                  const SizedBox(height: AppConstants.spacingLarge),
-                  _buildSectionHeader(context, 'Appearance'),
-                  const SizedBox(height: AppConstants.spacingSmall),
-                  _buildSwitchTile(
-                    context,
-                    icon: Icons.dark_mode_outlined,
-                    title: 'Dark Mode',
-                    subtitle: 'Always use dark theme',
-                    value: settings.darkMode,
-                    onChanged: (value) => settings.setDarkMode(value),
-                  ),
-                  const SizedBox(height: AppConstants.spacingMedium),
-                  const Divider(height: 1),
-                  const SizedBox(height: AppConstants.spacingLarge),
-                  _buildSectionHeader(context, 'About'),
-                  const SizedBox(height: AppConstants.spacingSmall),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.info_outline,
-                    title: 'About',
-                    subtitle: 'Version, credits, and more',
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AboutScreen()),
-                      );
-                    },
-                  ),
-                  // _buildSettingsTile(
-                  //   context,
-                  //   icon: Icons.code,
-                  //   title: 'Open Source Licenses',
-                  //   subtitle: 'View licenses',
-                  //   onTap: () {
-                  //     showLicensePage(
-                  //       context: context,
-                  //       applicationName: 'auvid',
-                  //       applicationVersion: '1.0.0',
-                  //       applicationIcon: Image.asset(
-                  //         'assets/images/logo.png',
-                  //         width: 48,
-                  //         height: 48,
-                  //       ),
-                  //     );
-                  //   },
-                  // ),
-                  const SizedBox(height: AppConstants.spacingXLarge),
+
+                  const SizedBox(height: 50),
                 ],
               ),
             ),
@@ -112,7 +139,153 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _selectDownloadFolder(BuildContext context, SettingsProvider settings) async {
+  // --- HELPER WIDGETS ---
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, bottom: 12),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: AppTheme.primary,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.5,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsCard({required List<Widget> children}) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      child: Column(children: children),
+    );
+  }
+
+  Widget _buildTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppTheme.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppTheme.primary, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+      ),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 13))
+          : null,
+      trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+  }) {
+    return SwitchListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      activeColor: AppTheme.primary,
+      secondary: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppTheme.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: value ? AppTheme.primary : Colors.grey, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+      ),
+      subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+      value: value,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildDropdownTile({
+    required IconData icon,
+    required String title,
+    required String value,
+    required List<String> items,
+    required Function(String?) onChanged,
+  }) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: AppTheme.background,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppTheme.primary, size: 20),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+      ),
+      trailing: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+        decoration: BoxDecoration(
+          color: AppTheme.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            dropdownColor: AppTheme.surface,
+            icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            items: items.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Text(value),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+      height: 1,
+      color: Colors.white.withOpacity(0.05),
+      indent: 60,
+      endIndent: 20,
+    );
+  }
+
+  // --- SETTINGS LOGIC ---
+
+  Future<void> _selectDownloadFolder(
+    BuildContext context,
+    SettingsProvider settings,
+  ) async {
     try {
       final result = await FilePicker.platform.getDirectoryPath(
         dialogTitle: 'Select Download Folder',
@@ -130,162 +303,9 @@ class SettingsScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error selecting folder: \$e')),
+          SnackBar(content: Text('Error selecting folder: $e')),
         );
       }
     }
-  }
-
-  Future<void> _showQualityPicker(BuildContext context, SettingsProvider settings) async {
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Default Quality'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: settings.qualityOptions.map((quality) {
-            return RadioListTile<String>(
-              title: Text(quality),
-              value: quality,
-              groupValue: settings.defaultQuality,
-              onChanged: (value) {
-                Navigator.of(context).pop(value);
-              },
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-
-    if (selected != null) {
-      await settings.setDefaultQuality(selected);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Default quality set to: $selected')),
-        );
-      }
-    }
-  }
-
-  Future<void> _showAudioFormatPicker(BuildContext context, SettingsProvider settings) async {
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Default Audio Format'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: settings.audioFormatOptions.map((format) {
-            return RadioListTile<String>(
-              title: Text(format.toUpperCase()),
-              subtitle: Text(_getFormatDescription(format)),
-              value: format,
-              groupValue: settings.defaultAudioFormat,
-              onChanged: (value) {
-                Navigator.of(context).pop(value);
-              },
-            );
-          }).toList(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-
-    if (selected != null) {
-      await settings.setDefaultAudioFormat(selected);
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Default audio format set to: \${selected.toUpperCase()}')),
-        );
-      }
-    }
-  }
-
-  String _getFormatDescription(String format) {
-    switch (format) {
-      case 'mp3':
-        return 'Universal compatibility';
-      case 'm4a':
-        return 'Better quality, Apple devices';
-      case 'opus':
-        return 'Best quality/size ratio';
-      case 'wav':
-        return 'Lossless, large files';
-      case 'flac':
-        return 'Lossless compression';
-      default:
-        return '';
-    }
-  }
-
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppConstants.spacingLarge,
-        vertical: AppConstants.spacingSmall,
-      ),
-      child: Text(
-        title.toUpperCase(),
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context).primaryColor,
-          letterSpacing: 1.2,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSettingsTile(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon, color: Theme.of(context).primaryColor),
-      title: Text(title),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-        ),
-      ),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: onTap,
-    );
-  }
-
-  Widget _buildSwitchTile(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return SwitchListTile(
-      secondary: Icon(icon, color: Theme.of(context).primaryColor),
-      title: Text(title),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-        ),
-      ),
-      value: value,
-      onChanged: onChanged,
-    );
   }
 }

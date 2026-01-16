@@ -35,17 +35,17 @@ class AboutScreen extends StatelessWidget {
                   width: 128,
                   height: 128,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(100),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).primaryColor.withOpacity(0.3),
-                        blurRadius: 20,
-                        spreadRadius: 2,
+                        color: Theme.of(context).primaryColor.withOpacity(0.1),
+                        blurRadius: 50,
+                        spreadRadius: 1,
                       ),
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(100),
                     child: Image.asset(
                       'assets/images/logo_icon.png',
                       width: 128,
