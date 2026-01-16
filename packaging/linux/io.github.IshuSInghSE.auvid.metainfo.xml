@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.IshuSInghSE.auvid</id>
+  <name>auvid</name>
+  <summary>Audio &amp; video downloader powered by yt-dlp</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  
+  <description>
+    <p>
+      auvid is a modern, elegant video and audio downloader with a beautiful 
+      purple-themed interface. Download videos and audio from YouTube and other 
+      platforms with ease.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Download videos in multiple quality options (4K, 1080p, 720p, etc.)</li>
+      <li>Extract audio in various formats (MP3, M4A, OPUS, WAV, FLAC)</li>
+      <li>Choose video formats (MP4, MKV, WEBM, MOV, FLV)</li>
+      <li>Beautiful dark/light theme support with system integration</li>
+      <li>Real-time download progress with speed and ETA</li>
+      <li>Powered by yt-dlp for reliable downloads</li>
+    </ul>
+  </description>
+  
+  <launchable type="desktop-id">io.github.IshuSInghSE.auvid.desktop</launchable>
+  
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main screen with video download options</caption>
+    </screenshot>
+  </screenshots>
+  
+  <url type="homepage">https://github.com/IshuSinghSE/auvid</url>
+  <url type="bugtracker">https://github.com/IshuSinghSE/auvid/issues</url>
+  
+  <developer_name>Ishu Singh</developer_name>
+  
+  <provides>
+    <binary>auvid</binary>
+  </provides>
+  
+  <releases>
+    <release version="1.0.0" date="2026-01-16">
+      <description>
+        <p>Initial release</p>
+        <ul>
+          <li>Video and audio downloads</li>
+          <li>Multiple quality and format options</li>
+          <li>Beautiful purple-themed UI</li>
+          <li>Light/dark theme support</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  
+  <content_rating type="oars-1.1" />
+</component>

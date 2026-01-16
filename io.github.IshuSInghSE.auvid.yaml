@@ -1,0 +1,47 @@
+app-id: io.github.IshuSInghSE.auvid
+runtime: org.gnome.Platform
+runtime-version: '47'
+sdk: org.gnome.Sdk
+command: auvid
+finish-args:
+  - --share=network                 # Download videos
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri                    # GPU for Flutter
+  - --filesystem=xdg-download       # Save to Downloads
+  - --talk-name=org.freedesktop.Notifications
+
+modules:
+  # ==========================================
+  # MODULE 1: The Engine (yt-dlp)
+  # ==========================================
+  - name: python3-yt-dlp
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --exists-action=i --no-index --find-links="file://${PWD}" --prefix=${FLATPAK_DEST} "yt-dlp" --no-build-isolation
+    sources:
+      - type: file
+        url: https://files.pythonhosted.org/packages/source/y/yt-dlp/yt_dlp-2025.1.12-py3-none-any.whl
+        sha256: 3d17983636f322304d9c745774a3861786526848902552697813088251ff946ea
+
+  # ==========================================
+  # MODULE 2: The UI (Auvid / Flutter)
+  # ==========================================
+  - name: auvid
+    buildsystem: simple
+    build-commands:
+      - flutter build linux --release --no-pub
+      - install -D build/linux/x64/release/bundle/auvid -t /app/bin/
+      - cp -r build/linux/x64/release/bundle/lib /app/lib/
+      - cp -r build/linux/x64/release/bundle/data /app/data/
+      - install -Dm644 linux/runner/resources/app_icon.png /app/share/icons/hicolor/512x512/apps/${FLATPAK_ID}.png
+      - install -Dm644 packaging/linux/${FLATPAK_ID}.desktop /app/share/applications/${FLATPAK_ID}.desktop
+      - install -Dm644 packaging/linux/${FLATPAK_ID}.metainfo.xml /app/share/metainfo/${FLATPAK_ID}.metainfo.xml
+    sources:
+      - type: dir
+        path: .
+      - type: git
+        url: https://github.com/flutter/flutter.git
+        tag: 3.38.5
+        dest: flutter
