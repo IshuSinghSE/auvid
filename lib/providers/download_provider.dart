@@ -48,10 +48,18 @@ class DownloadProvider extends ChangeNotifier {
 
   // Setters
   void setMode(DownloadMode mode) {
+    if (_mode == mode) return;
     _mode = mode;
-    _selectedFormat = null;
-    _selectedQuality = null;
-    _selectedFormatExt = null;
+    
+    // Pre-select default format for new mode to avoid flickering
+    if (_videoInfo != null) {
+      final qualityOptions = getQualityOptions();
+      final formatOptions = getFormatOptions();
+      if (qualityOptions.isNotEmpty && formatOptions.isNotEmpty) {
+        updateSelectedFormat(qualityOptions.first, formatOptions.first);
+      }
+    }
+    
     notifyListeners();
   }
 

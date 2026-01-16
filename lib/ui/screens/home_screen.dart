@@ -131,12 +131,14 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 1);
     _tabController.addListener(() {
-      final provider = Provider.of<DownloadProvider>(context, listen: false);
-      provider.setMode(_tabController.index == 0
-          ? DownloadMode.audio
-          : DownloadMode.video);
+      if (!_tabController.indexIsChanging) {
+        final provider = Provider.of<DownloadProvider>(context, listen: false);
+        provider.setMode(_tabController.index == 0
+            ? DownloadMode.audio
+            : DownloadMode.video);
+      }
     });
   }
 
@@ -154,10 +156,12 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
     final qualityOptions = provider.getQualityOptions();
     final formatOptions = provider.getFormatOptions();
 
-    // Set default selections
-    if (provider.selectedFormat == null && qualityOptions.isNotEmpty) {
+    // Set default selections only on first load
+    if (provider.selectedFormat == null && qualityOptions.isNotEmpty && formatOptions.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        provider.updateSelectedFormat(qualityOptions.first, formatOptions.first);
+        if (provider.selectedFormat == null) {
+          provider.updateSelectedFormat(qualityOptions.first, formatOptions.first);
+        }
       });
     }
 
@@ -167,28 +171,95 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: provider.reset,
+          tooltip: 'Back',
         ),
         title: const Text('Download'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.audiotrack), text: 'Audio'),
-            Tab(icon: Icon(Icons.videocam), text: 'Video'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Center(
+            child: TabBar(
+              controller: _tabController,
+              isScrollable: true,
+              tabAlignment: TabAlignment.center,
+              indicatorPadding: EdgeInsets.zero,
+              indicator: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Theme.of(context).primaryColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Theme.of(context).primaryColor.withOpacity(0.3),
+                    blurRadius: 8,
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: Colors.transparent,
+              labelColor: Colors.white,
+              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+              labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+              tabs: const [
+                Tab(
+                  height: 40,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.audiotrack, size: 18),
+                        SizedBox(width: 6),
+                        Text('Audio'),
+                      ],
+                    ),
+                  ),
+                ),
+                Tab(
+                  height: 40,
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.videocam, size: 18),
+                        SizedBox(width: 6),
+                        Text('Video'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > AppConstants.wideLayoutBreakpoint;
-
-          if (isWide) {
-            return _buildWideLayout(
-                context, provider, qualityOptions, formatOptions);
-          } else {
-            return _buildNarrowLayout(
-                context, provider, qualityOptions, formatOptions);
-          }
+      body: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        switchInCurve: Curves.easeInOut,
+        switchOutCurve: Curves.easeInOut,
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: child,
+          );
         },
+        child: LayoutBuilder(
+          key: ValueKey('${provider.mode}_${provider.selectedQuality}'),
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > AppConstants.wideLayoutBreakpoint;
+
+            if (isWide) {
+              return _buildWideLayout(
+                  context, provider, qualityOptions, formatOptions);
+            } else {
+              return _buildNarrowLayout(
+                  context, provider, qualityOptions, formatOptions);
+            }
+          },
+        ),
       ),
     );
   }
@@ -442,11 +513,23 @@ class DownloadingScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        leading: TextButton(
+        leading: IconButton(
+          icon: const Icon(Icons.close),
           onPressed: provider.cancelDownload,
-          child: const Text('Cancel'),
+          tooltip: 'Cancel Download',
         ),
         title: const Text('Downloading'),
+        actions: [
+          TextButton.icon(
+            onPressed: provider.cancelDownload,
+            icon: const Icon(Icons.cancel_outlined),
+            label: const Text('Cancel'),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: Center(
         child: Container(

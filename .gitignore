@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+
+# video & audio files
+*.mp4
+*.mkv
+*.m4a
+*.mp3
+*.webm
