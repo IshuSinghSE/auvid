@@ -2,7 +2,7 @@
 Name=auvid
 Comment=Audio & video downloader
 Exec=auvid
-Icon=io.github.IshuSInghSE.auvid
+Icon=io.github.IshuSinghSE.auvid
 Type=Application
 Categories=AudioVideo;Utility;
 Terminal=false

@@ -51,3 +51,9 @@ app.*.map.json
 *.m4a
 *.mp3
 *.webm
+
+# packaging/build outputs
+/flatpak-flutter/
+/builds/
+/build-dir/
+.flatpak-builder/

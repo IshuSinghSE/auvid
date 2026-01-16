@@ -35,7 +35,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/IshuSinghSE/auvid.git
-        commit : a2036a176a443303525e505deef1f6cca18b6dd8
+        commit : b95abecf36e6d4c8ac925c92a35d9424f68ad750
       - type: git
         url: https://github.com/flutter/flutter.git
         tag: 3.38.5

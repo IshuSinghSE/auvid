@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.IshuSInghSE.auvid</id>
+  <id>io.github.IshuSinghSE.auvid</id>
   <name>auvid</name>
   <summary>Audio &amp; video downloader powered by yt-dlp</summary>
   <metadata_license>CC0-1.0</metadata_license>
@@ -23,7 +23,7 @@
     </ul>
   </description>
   
-  <launchable type="desktop-id">io.github.IshuSInghSE.auvid.desktop</launchable>
+  <launchable type="desktop-id">io.github.IshuSinghSE.auvid.desktop</launchable>
   
   <screenshots>
     <screenshot type="default">

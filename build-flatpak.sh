@@ -7,7 +7,7 @@ set -e  # Exit on error
 set -x  # Show commands
 
 projectName=auvid
-projectId=io.github.IshuSInghSE.auvid
+projectId=io.github.IshuSinghSE.auvid
 executableName=auvid
 
 # Extract portable Flutter build
