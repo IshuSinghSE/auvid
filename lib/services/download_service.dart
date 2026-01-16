@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import '../core/models.dart';
 
 class DownloadService {
   // Get comprehensive video information including available formats
@@ -40,7 +41,6 @@ class DownloadService {
               // Video format
               final height = format['height'];
               final fps = format['fps'];
-              final vcodec = format['vcodec']?.toString() ?? '';
               final acodec = format['acodec']?.toString() ?? 'no audio';
               
               if (height != null && formatId != null) {
@@ -59,7 +59,6 @@ class DownloadService {
             } else if (format['acodec'] != null && format['acodec'] != 'none') {
               // Audio-only format
               final abr = format['abr']; // audio bitrate
-              final acodec = format['acodec']?.toString() ?? '';
               
               if (formatId != null) {
                 final quality = abr != null ? '${abr.round()}kbps' : 'Audio';
@@ -157,10 +156,20 @@ class DownloadService {
     // Spawn the process
     final process = await Process.start(binaryPath, args);
 
+    // Yield initial progress
+    yield {
+      'progress': 0.0,
+      'speed': '',
+      'fileSize': '',
+      'eta': '',
+      'path': '',
+    };
+
     // Collect stderr for error messages
     final stderrBuffer = StringBuffer();
     process.stderr.transform(systemEncoding.decoder).listen((data) {
       stderrBuffer.write(data);
+      print('[yt-dlp stderr]: $data'); // Debug output
     });
 
     // Regex patterns for parsing progress
@@ -171,9 +180,10 @@ class DownloadService {
     final destinationRegex = RegExp(r'\[download\] Destination: (.+)');
 
     String currentPath = '';
-    bool hasProgress = false;
     
     await for (final line in process.stdout.transform(systemEncoding.decoder)) {
+      print('[yt-dlp]: $line'); // Debug output
+      
       // Extract destination path
       final destMatch = destinationRegex.firstMatch(line);
       if (destMatch != null) {
@@ -185,7 +195,6 @@ class DownloadService {
       if (progressMatch != null) {
         final percentageStr = progressMatch.group(1);
         if (percentageStr != null) {
-          hasProgress = true;
           final percentage = double.parse(percentageStr) / 100.0;
 
           // Extract other metrics
@@ -306,43 +315,4 @@ class DownloadService {
         return 'bestvideo+bestaudio/best';
     }
   }
-}
-
-// Data classes for video information
-class VideoInfo {
-  final String title;
-  final String thumbnail;
-  final String duration;
-  final String uploader;
-  final List<FormatInfo> videoFormats;
-  final List<FormatInfo> audioFormats;
-
-  VideoInfo({
-    required this.title,
-    required this.thumbnail,
-    required this.duration,
-    required this.uploader,
-    required this.videoFormats,
-    required this.audioFormats,
-  });
-
-  void operator [](String other) {}
-}
-
-class FormatInfo {
-  final String formatId;
-  final String quality;
-  final String description;
-  final String ext;
-  final String filesize;
-  final bool hasAudio;
-
-  FormatInfo({
-    required this.formatId,
-    required this.quality,
-    required this.description,
-    required this.ext,
-    required this.filesize,
-    required this.hasAudio,
-  });
 }
