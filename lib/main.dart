@@ -36,42 +36,32 @@ class DownloaderPage extends StatefulWidget {
 
 enum DownloadMode { audio, video }
 
+enum ScreenState { input, formatSelection, downloading, complete }
+
 class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProviderStateMixin {
   final _urlController = TextEditingController();
   final _downloadService = DownloadService();
   late TabController _tabController;
 
   DownloadMode _mode = DownloadMode.video;
-  String _selectedQuality = '1080p (HD)';
-  bool _preferMpeg = false;
+  ScreenState _screenState = ScreenState.input;
+  
+  VideoInfo? _videoInfo;
+  FormatInfo? _selectedFormat;
+  String? _selectedQuality;
+  String? _selectedFormatExt;
+  bool _extractAudio = false;
+  String _audioFormat = 'mp3';
+  
   bool _isDownloading = false;
+  bool _isFetchingInfo = false;
   double _progress = 0.0;
   String _statusMessage = '';
-  bool _downloadComplete = false;
-  String _videoTitle = '';
-  String _thumbnailUrl = '';
   String _downloadSpeed = '';
   String _fileSize = '';
   String _timeRemaining = '';
   String _downloadPath = '';
   Process? _downloadProcess;
-
-  final Map<String, String> _videoQualities = {
-    '2160p (4K)': '2160p',
-    '1440p (QHD)': '1440p',
-    '1080p (HD)': '1080p',
-    '720p (HD)': '720p',
-    '480p': '480p',
-    '360p': '360p',
-  };
-
-  final Map<String, String> _audioQualities = {
-    'Best': 'best',
-    '320kbps': '320k',
-    '256kbps': '256k',
-    '192kbps': '192k',
-    '128kbps': '128k',
-  };
 
   @override
   void initState() {
@@ -80,29 +70,14 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
     _tabController.addListener(() {
       setState(() {
         _mode = _tabController.index == 0 ? DownloadMode.audio : DownloadMode.video;
-        _selectedQuality = _mode == DownloadMode.audio ? 'Best' : '1080p (HD)';
+        _selectedFormat = null;
+        _selectedQuality = null;
+        _selectedFormatExt = null;
       });
     });
   }
 
   Future<void> _fetchVideoInfo() async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) return;
-
-    try {
-      final info = await _downloadService.getVideoInfo(url);
-      setState(() {
-        _videoTitle = info['title'] ?? 'Unknown Title';
-        _thumbnailUrl = info['thumbnail'] ?? '';
-      });
-    } catch (e) {
-      setState(() {
-        _statusMessage = 'Could not fetch video info';
-      });
-    }
-  }
-
-  void _startDownload() async {
     final url = _urlController.text.trim();
     if (url.isEmpty) {
       setState(() {
@@ -111,26 +86,61 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
       return;
     }
 
-    // Fetch video info first
-    await _fetchVideoInfo();
-
     setState(() {
-      _isDownloading = true;
-      _progress = 0.0;
-      _statusMessage = 'Starting download...';
-      _downloadComplete = false;
+      _isFetchingInfo = true;
+      _statusMessage = 'Fetching video information...';
+      _videoInfo = null;
     });
 
     try {
-      final quality = _mode == DownloadMode.audio 
-          ? _audioQualities[_selectedQuality] ?? 'best'
-          : _videoQualities[_selectedQuality] ?? '1080p';
+      final info = await _downloadService.getVideoInfo(url);
+      if (info != null) {
+        setState(() {
+          _videoInfo = info;
+          _screenState = ScreenState.formatSelection;
+          _isFetchingInfo = false;
+          _statusMessage = '';
+        });
+      } else {
+        setState(() {
+          _isFetchingInfo = false;
+          _statusMessage = 'Could not fetch video info';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isFetchingInfo = false;
+        _statusMessage = 'Error: $e';
+      });
+    }
+  }
 
+  void _startDownload() async {
+    if (_selectedFormat == null) {
+      setState(() {
+        _statusMessage = 'Please select a format';
+      });
+      return;
+    }
+
+    setState(() {
+      _screenState = ScreenState.downloading;
+      _isDownloading = true;
+      _progress = 0.0;
+      _statusMessage = 'Starting download...';
+    });
+
+    try {
+      final url = _urlController.text.trim();
+      // Extract quality number from format (e.g., "1080p" -> "1080")
+      final qualityStr = _selectedFormat!.quality.replaceAll(RegExp(r'[^0-9]'), '');
+      final quality = qualityStr.isNotEmpty ? qualityStr : '720';
+      
       await for (final data in _downloadService.downloadVideoWithProgress(
-        url, 
+        url,
         quality,
-        audioOnly: _mode == DownloadMode.audio,
-        preferMpeg: _preferMpeg,
+        extractAudio: _extractAudio,
+        audioFormat: _audioFormat,
       )) {
         setState(() {
           _progress = data['progress'] ?? 0.0;
@@ -143,13 +153,13 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
 
       setState(() {
         _isDownloading = false;
-        _downloadComplete = true;
+        _screenState = ScreenState.complete;
         _statusMessage = 'Download finished';
       });
     } catch (e) {
       setState(() {
         _isDownloading = false;
-        _downloadComplete = false;
+        _screenState = ScreenState.formatSelection;
         _statusMessage = 'Error: $e';
       });
     }
@@ -159,7 +169,7 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
     _downloadProcess?.kill();
     setState(() {
       _isDownloading = false;
-      _downloadComplete = false;
+      _screenState = ScreenState.formatSelection;
       _progress = 0.0;
       _statusMessage = 'Download cancelled';
     });
@@ -174,12 +184,25 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
 
   void _reset() {
     setState(() {
+      _screenState = ScreenState.input;
+      _videoInfo = null;
+      _selectedFormat = null;
+      _selectedQuality = null;
+      _selectedFormatExt = null;
       _isDownloading = false;
-      _downloadComplete = false;
+      _isFetchingInfo = false;
       _progress = 0.0;
       _statusMessage = '';
-      _videoTitle = '';
-      _thumbnailUrl = '';
+      _urlController.clear();
+    });
+  }
+
+  void _backToSelection() {
+    setState(() {
+      _screenState = ScreenState.formatSelection;
+      _selectedFormat = null;
+      _progress = 0.0;
+      _statusMessage = '';
     });
   }
 
@@ -193,32 +216,23 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    if (_downloadComplete) {
-      return _buildCompletionScreen(context);
+    switch (_screenState) {
+      case ScreenState.input:
+        return _buildInputScreen(context);
+      case ScreenState.formatSelection:
+        return _buildFormatSelectionScreen(context);
+      case ScreenState.downloading:
+        return _buildDownloadingScreen(context);
+      case ScreenState.complete:
+        return _buildCompletionScreen(context);
     }
-    
-    if (_isDownloading) {
-      return _buildDownloadingScreen(context);
-    }
-
-    return _buildInputScreen(context);
   }
 
   Widget _buildInputScreen(BuildContext context) {
-    final qualities = _mode == DownloadMode.audio 
-        ? _audioQualities.keys.toList() 
-        : _videoQualities.keys.toList();
-
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(icon: Icon(Icons.audiotrack), text: 'Audio'),
-            Tab(icon: Icon(Icons.videocam), text: 'Video'),
-          ],
-        ),
+        title: const Text('Video Downloader'),
       ),
       body: Center(
         child: Container(
@@ -228,6 +242,15 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              const Icon(Icons.cloud_download, size: 80),
+              const SizedBox(height: 24),
+              const Text(
+                'Enter Video URL',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              
               // URL Input Field
               TextField(
                 controller: _urlController,
@@ -235,81 +258,41 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
                   labelText: 'URL',
                   hintText: 'https://www.youtube.com/watch?v=...',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.link),
                 ),
-                onChanged: (value) {
-                  if (value.contains('youtube.com') || value.contains('youtu.be')) {
-                    _fetchVideoInfo();
-                  }
-                },
+                onSubmitted: (_) => _fetchVideoInfo(),
               ),
               const SizedBox(height: 24),
 
-              // Resolution Dropdown
-              DropdownButtonFormField<String>(
-                initialValue: _selectedQuality,
-                decoration: const InputDecoration(
-                  labelText: 'Resolution',
-                  border: OutlineInputBorder(),
-                ),
-                items: qualities.map((quality) {
-                  return DropdownMenuItem(
-                    value: quality,
-                    child: Text(quality),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedQuality = value!;
-                  });
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Prefer MPEG Format Toggle
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Prefer MPEG format',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  Switch(
-                    value: _preferMpeg,
-                    onChanged: (value) {
-                      setState(() {
-                        _preferMpeg = value;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 40),
-
-              // Download Button
+              // Fetch Button
               ElevatedButton(
-                onPressed: _startDownload,
+                onPressed: _isFetchingInfo ? null : _fetchVideoInfo,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text(
-                  'Download',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-                ),
+                child: _isFetchingInfo
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Continue',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
               ),
 
               // Error Message
-              if (_statusMessage.isNotEmpty && !_isDownloading)
+              if (_statusMessage.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 20),
                   child: Text(
                     _statusMessage,
                     style: TextStyle(
-                      color: _statusMessage.startsWith('Error') ? Colors.red : Colors.grey,
+                      color: _statusMessage.startsWith('Error') ? Colors.red : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
@@ -322,6 +305,392 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
     );
   }
 
+  Widget _buildFormatSelectionScreen(BuildContext context) {
+    if (_videoInfo == null) return const SizedBox();
+
+    // Group formats by quality for simpler selection
+    final qualityOptions = _getQualityOptions();
+    final formatOptions = _getFormatOptions();
+    
+    // Set default selections
+    if (_selectedFormat == null && qualityOptions.isNotEmpty) {
+      // Select best quality by default
+      final bestQuality = qualityOptions.first;
+      _updateSelectedFormat(bestQuality, formatOptions.first);
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _reset,
+        ),
+        title: const Text('Download'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.audiotrack), text: 'Audio'),
+            Tab(icon: Icon(Icons.videocam), text: 'Video'),
+          ],
+        ),
+      ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 800;
+          
+          if (isWide) {
+            return _buildWideLayout(context, qualityOptions, formatOptions);
+          } else {
+            return _buildNarrowLayout(context, qualityOptions, formatOptions);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildWideLayout(BuildContext context, List<String> qualityOptions, List<String> formatOptions) {
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 1000),
+        padding: const EdgeInsets.all(24),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left side - Thumbnail and Info
+            Expanded(
+              flex: 2,
+              child: _buildVideoInfo(context),
+            ),
+            const SizedBox(width: 32),
+            // Right side - Options
+            Expanded(
+              flex: 3,
+              child: _buildDownloadOptions(context, qualityOptions, formatOptions),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNarrowLayout(BuildContext context, List<String> qualityOptions, List<String> formatOptions) {
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            _buildVideoInfo(context),
+            const SizedBox(height: 24),
+            _buildDownloadOptions(context, qualityOptions, formatOptions),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoInfo(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Thumbnail
+        if (_videoInfo!.thumbnail.isNotEmpty)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              _videoInfo!.thumbnail,
+              width: double.infinity,
+              height: 240,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                width: double.infinity,
+                height: 240,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceVariant,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.image, size: 64),
+              ),
+            ),
+          )
+        else
+          Container(
+            width: double.infinity,
+            height: 240,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.videocam, size: 64),
+          ),
+        const SizedBox(height: 16),
+        
+        // Title
+        Text(
+          _videoInfo!.title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        // Uploader
+        if (_videoInfo!.uploader.isNotEmpty)
+          Text(
+            _videoInfo!.uploader,
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDownloadOptions(BuildContext context, List<String> qualityOptions, List<String> formatOptions) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+        // Quality Dropdown
+        DropdownButtonFormField<String>(
+          decoration: InputDecoration(
+            labelText: 'Quality',
+            border: const OutlineInputBorder(),
+            prefixIcon: const Icon(Icons.high_quality),
+            helperText: 'Select video quality',
+          ),
+          value: _selectedQuality,
+          items: qualityOptions.map((quality) {
+            final isRecommended = quality == qualityOptions.first;
+            return DropdownMenuItem(
+              value: quality,
+              child: Row(
+                children: [
+                  Text(quality),
+                  if (isRecommended) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Recommended',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                _updateSelectedFormat(value, formatOptions.first);
+              });
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+        
+        // Format Dropdown
+        DropdownButtonFormField<String>(
+          decoration: const InputDecoration(
+            labelText: 'Format',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.video_file),
+            helperText: 'Select file format',
+          ),
+          initialValue: _selectedFormatExt,
+          items: formatOptions.map((format) {
+            return DropdownMenuItem(
+              value: format,
+              child: Text(format.toUpperCase()),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                _updateSelectedFormat(_selectedQuality ?? qualityOptions.first, value);
+              });
+            }
+          },
+        ),
+        const SizedBox(height: 24),
+        
+        // Selected format info card
+        if (_selectedFormat != null)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Download Details',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow(context, 'Quality', _selectedFormat!.quality),
+                _buildInfoRow(context, 'Format', _selectedFormat!.ext.toUpperCase()),
+                _buildInfoRow(context, 'File Size', _selectedFormat!.filesize),
+                _buildInfoRow(
+                  context,
+                  'Audio',
+                  _selectedFormat!.hasAudio ? 'Included' : 'No audio',
+                ),
+              ],
+            ),
+          ),
+        
+        const SizedBox(height: 24),
+        
+        // Download Button
+        FilledButton.icon(
+          onPressed: _selectedFormat == null ? null : _startDownload,
+          icon: const Icon(Icons.download),
+          label: const Text('Download'),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+        
+        // Error Message
+        if (_statusMessage.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Text(
+              _statusMessage,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _getQualityOptions() {
+    final formats = _mode == DownloadMode.audio 
+        ? _videoInfo!.audioFormats 
+        : _videoInfo!.videoFormats;
+    
+    // Extract unique qualities and sort
+    final qualities = formats.map((f) => f.quality).toSet().toList();
+    
+    if (_mode == DownloadMode.video) {
+      // Sort video qualities from highest to lowest
+      qualities.sort((a, b) {
+        final aHeight = int.tryParse(a.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        final bHeight = int.tryParse(b.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        return bHeight.compareTo(aHeight);
+      });
+    } else {
+      // Sort audio qualities from highest to lowest bitrate
+      qualities.sort((a, b) {
+        final aBitrate = int.tryParse(a.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        final bBitrate = int.tryParse(b.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+        return bBitrate.compareTo(aBitrate);
+      });
+    }
+    
+    return qualities;
+  }
+
+  List<String> _getFormatOptions() {
+    final formats = _mode == DownloadMode.audio 
+        ? _videoInfo!.audioFormats 
+        : _videoInfo!.videoFormats;
+    
+    // Extract unique extensions
+    final extensions = formats.map((f) => f.ext).toSet().toList();
+    extensions.sort();
+    
+    return extensions;
+  }
+
+  // String? _selectedQuality;
+  // String? _selectedFormatExt;
+
+  void _updateSelectedFormat(String quality, String formatExt) {
+    _selectedQuality = quality;
+    _selectedFormatExt = formatExt;
+    
+    final formats = _mode == DownloadMode.audio 
+        ? _videoInfo!.audioFormats 
+        : _videoInfo!.videoFormats;
+    
+    // Find format matching quality and extension
+    final matchingFormats = formats.where((f) => 
+      f.quality == quality && f.ext == formatExt
+    ).toList();
+    
+    if (matchingFormats.isNotEmpty) {
+      _selectedFormat = matchingFormats.first;
+    } else {
+      // Fallback: find any format with matching quality
+      final qualityMatches = formats.where((f) => f.quality == quality).toList();
+      if (qualityMatches.isNotEmpty) {
+        _selectedFormat = qualityMatches.first;
+        _selectedFormatExt = _selectedFormat!.ext;
+      }
+    }
+  }
+
   Widget _buildDownloadingScreen(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -330,7 +699,7 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
           onPressed: _cancelDownload,
           child: const Text('Cancel'),
         ),
-        title: const Text('Video Downloader'),
+        title: const Text('Downloading'),
       ),
       body: Center(
         child: Container(
@@ -346,34 +715,42 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
               ),
               const SizedBox(height: 24),
               
-              if (_videoTitle.isNotEmpty)
+              if (_videoInfo != null)
                 Text(
-                  _videoTitle,
+                  _videoInfo!.title,
                   style: const TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               const SizedBox(height: 24),
 
-              // Thumbnail placeholder
-              if (_thumbnailUrl.isNotEmpty)
-                Container(
-                  width: 320,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(8),
+              // Thumbnail
+              if (_videoInfo?.thumbnail.isNotEmpty ?? false)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    _videoInfo!.thumbnail,
+                    width: 320,
+                    height: 180,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 320,
+                      height: 180,
+                      color: Theme.of(context).colorScheme.surfaceVariant,
+                      child: const Icon(Icons.image, size: 64),
+                    ),
                   ),
-                  child: const Icon(Icons.image, size: 64, color: Colors.grey),
                 )
               else
                 Container(
                   width: 320,
                   height: 180,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.videocam, size: 64, color: Colors.grey),
+                  child: const Icon(Icons.videocam, size: 64),
                 ),
               const SizedBox(height: 32),
 
@@ -381,15 +758,21 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
               LinearProgressIndicator(
                 value: _progress,
                 minHeight: 8,
-                backgroundColor: Colors.grey[300],
-                color: Colors.blue,
               ),
               const SizedBox(height: 16),
 
               // Progress Text
               Text(
+                '${(_progress * 100).toStringAsFixed(1)}%',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
                 '$_timeRemaining - $_fileSize ($_downloadSpeed)',
-                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                ),
               ),
             ],
           ),
@@ -403,10 +786,10 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.close),
           onPressed: _reset,
         ),
-        title: const Text('Video Downloader'),
+        title: const Text('Download Complete'),
       ),
       body: Center(
         child: Container(
@@ -414,62 +797,68 @@ class _DownloaderPageState extends State<DownloaderPage> with SingleTickerProvid
           padding: const EdgeInsets.all(32.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Icon(
-                Icons.download,
-                size: 64,
-                color: Colors.black87,
+              // Success Icon
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_circle,
+                  size: 80,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
+              
+              // Title
               const Text(
-                'Download finished',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                'Download Complete',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               
-              if (_videoTitle.isNotEmpty)
+              // Video title
+              if (_videoInfo != null)
                 Text(
-                  _videoTitle,
-                  style: const TextStyle(fontSize: 16),
+                  _videoInfo!.title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
                   textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              const SizedBox(height: 32),
+              
+              const SizedBox(height: 48),
 
-              // Open Download Location Button
-              ElevatedButton(
+              // Action Buttons
+              FilledButton.icon(
                 onPressed: _openDownloadLocation,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.grey[300],
-                  foregroundColor: Colors.black87,
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Open Folder'),
+                style: FilledButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Open Download Location'),
               ),
-              const SizedBox(height: 32),
-
-              // Details Expandable
-              ExpansionTile(
-                leading: const Icon(Icons.info_outline),
-                title: const Text('Details'),
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Quality: $_selectedQuality'),
-                        const SizedBox(height: 8),
-                        Text('Format: ${_preferMpeg ? "MPEG" : "Default"}'),
-                        const SizedBox(height: 8),
-                        Text('Path: $_downloadPath'),
-                      ],
-                    ),
+              const SizedBox(height: 12),
+              
+              OutlinedButton.icon(
+                onPressed: _reset,
+                icon: const Icon(Icons.add),
+                label: const Text('Download Another'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
+                ),
               ),
             ],
           ),

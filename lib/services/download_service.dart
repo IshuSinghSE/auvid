@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:convert';
 
 class DownloadService {
-  // Get video information (title, thumbnail, etc.)
-  Future<Map<String, String>> getVideoInfo(String url) async {
+  // Get comprehensive video information including available formats
+  Future<VideoInfo?> getVideoInfo(String url) async {
     final String binaryPath = _getBinaryPath();
 
     final binary = File(binaryPath);
@@ -24,26 +24,104 @@ class DownloadService {
 
       if (result.exitCode == 0) {
         final json = jsonDecode(result.stdout);
-        return {
-          'title': json['title'] ?? 'Unknown',
-          'thumbnail': json['thumbnail'] ?? '',
-          'duration': json['duration']?.toString() ?? '',
-          'uploader': json['uploader'] ?? '',
-        };
+        
+        // Parse available formats
+        final List<FormatInfo> videoFormats = [];
+        final List<FormatInfo> audioFormats = [];
+        
+        if (json['formats'] != null) {
+          for (var format in json['formats']) {
+            final formatId = format['format_id']?.toString();
+            final ext = format['ext']?.toString() ?? 'unknown';
+            final filesize = format['filesize'] ?? format['filesize_approx'];
+            final filesizeStr = filesize != null ? _formatFileSize(filesize) : 'Unknown size';
+            
+            if (format['vcodec'] != null && format['vcodec'] != 'none') {
+              // Video format
+              final height = format['height'];
+              final fps = format['fps'];
+              final vcodec = format['vcodec']?.toString() ?? '';
+              final acodec = format['acodec']?.toString() ?? 'no audio';
+              
+              if (height != null && formatId != null) {
+                final quality = '${height}p${fps != null ? fps.round() : ""}';
+                final description = '$quality ($ext) - $filesizeStr';
+                
+                videoFormats.add(FormatInfo(
+                  formatId: formatId,
+                  quality: quality,
+                  description: description,
+                  ext: ext,
+                  filesize: filesizeStr,
+                  hasAudio: acodec != 'none',
+                ));
+              }
+            } else if (format['acodec'] != null && format['acodec'] != 'none') {
+              // Audio-only format
+              final abr = format['abr']; // audio bitrate
+              final acodec = format['acodec']?.toString() ?? '';
+              
+              if (formatId != null) {
+                final quality = abr != null ? '${abr.round()}kbps' : 'Audio';
+                final description = '$quality ($ext) - $filesizeStr';
+                
+                audioFormats.add(FormatInfo(
+                  formatId: formatId,
+                  quality: quality,
+                  description: description,
+                  ext: ext,
+                  filesize: filesizeStr,
+                  hasAudio: true,
+                ));
+              }
+            }
+          }
+        }
+        
+        // Sort formats - highest quality first
+        videoFormats.sort((a, b) {
+          final aHeight = int.tryParse(a.quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+          final bHeight = int.tryParse(b.quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+          return bHeight.compareTo(aHeight);
+        });
+        
+        audioFormats.sort((a, b) {
+          final aBitrate = int.tryParse(a.quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+          final bBitrate = int.tryParse(b.quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+          return bBitrate.compareTo(aBitrate);
+        });
+        
+        return VideoInfo(
+          title: json['title'] ?? 'Unknown',
+          thumbnail: json['thumbnail'] ?? '',
+          duration: json['duration']?.toString() ?? '0',
+          uploader: json['uploader'] ?? '',
+          videoFormats: videoFormats,
+          audioFormats: audioFormats,
+        );
       }
     } catch (e) {
-      // Silently fail, video info is optional
+      throw Exception('Failed to fetch video info: $e');
     }
 
-    return {};
+    return null;
+  }
+  
+  String _formatFileSize(dynamic bytes) {
+    if (bytes == null) return 'Unknown size';
+    final size = bytes is int ? bytes : int.tryParse(bytes.toString()) ?? 0;
+    if (size < 1024) return '$size B';
+    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)} KB';
+    if (size < 1024 * 1024 * 1024) return '${(size / (1024 * 1024)).toStringAsFixed(1)} MB';
+    return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
   }
 
   // Download with detailed progress information
   Stream<Map<String, dynamic>> downloadVideoWithProgress(
     String url,
     String quality, {
-    bool audioOnly = false,
-    bool preferMpeg = false,
+    bool extractAudio = false,
+    String audioFormat = 'mp3',
   }) async* {
     final String binaryPath = _getBinaryPath();
 
@@ -63,19 +141,27 @@ class DownloadService {
       '%(title)s.%(ext)s',
     ];
 
-    if (audioOnly) {
-      args.addAll(['-x', '--audio-format', preferMpeg ? 'mp3' : 'best']);
+    if (extractAudio) {
+      // Extract audio from video
+      args.addAll(['-x', '--audio-format', audioFormat]);
+      args.addAll(['-f', 'bestaudio/best']);
     } else {
-      if (preferMpeg) {
-        args.addAll(['--recode-video', 'mp4']);
-      }
-      args.addAll(['-f', _getFormatString(quality)]);
+      // Video download - use format selection that yt-dlp can handle
+      // This avoids the JavaScript runtime requirement
+      args.addAll(['-S', 'res:$quality,ext:mp4:m4a']);
+      args.addAll(['-f', 'bv*[height<=$quality]+ba/b[height<=$quality]/bv*+ba/b']);
     }
 
     args.add(url);
 
     // Spawn the process
     final process = await Process.start(binaryPath, args);
+
+    // Collect stderr for error messages
+    final stderrBuffer = StringBuffer();
+    process.stderr.transform(systemEncoding.decoder).listen((data) {
+      stderrBuffer.write(data);
+    });
 
     // Regex patterns for parsing progress
     final progressRegex = RegExp(r'\[download\]\s+(\d+\.?\d*)%');
@@ -85,6 +171,7 @@ class DownloadService {
     final destinationRegex = RegExp(r'\[download\] Destination: (.+)');
 
     String currentPath = '';
+    bool hasProgress = false;
     
     await for (final line in process.stdout.transform(systemEncoding.decoder)) {
       // Extract destination path
@@ -98,6 +185,7 @@ class DownloadService {
       if (progressMatch != null) {
         final percentageStr = progressMatch.group(1);
         if (percentageStr != null) {
+          hasProgress = true;
           final percentage = double.parse(percentageStr) / 100.0;
 
           // Extract other metrics
@@ -119,10 +207,10 @@ class DownloadService {
     // Wait for process to complete
     final exitCode = await process.exitCode;
     if (exitCode != 0) {
-      final errors = await process.stderr.transform(systemEncoding.decoder).join();
+      final errors = stderrBuffer.toString();
       throw Exception('Download failed: $errors');
     }
-
+    
     // Signal completion
     yield {
       'progress': 1.0,
@@ -218,4 +306,43 @@ class DownloadService {
         return 'bestvideo+bestaudio/best';
     }
   }
+}
+
+// Data classes for video information
+class VideoInfo {
+  final String title;
+  final String thumbnail;
+  final String duration;
+  final String uploader;
+  final List<FormatInfo> videoFormats;
+  final List<FormatInfo> audioFormats;
+
+  VideoInfo({
+    required this.title,
+    required this.thumbnail,
+    required this.duration,
+    required this.uploader,
+    required this.videoFormats,
+    required this.audioFormats,
+  });
+
+  void operator [](String other) {}
+}
+
+class FormatInfo {
+  final String formatId;
+  final String quality;
+  final String description;
+  final String ext;
+  final String filesize;
+  final bool hasAudio;
+
+  FormatInfo({
+    required this.formatId,
+    required this.quality,
+    required this.description,
+    required this.ext,
+    required this.filesize,
+    required this.hasAudio,
+  });
 }
