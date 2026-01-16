@@ -1,0 +1,221 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:convert';
+
+class DownloadService {
+  // Get video information (title, thumbnail, etc.)
+  Future<Map<String, String>> getVideoInfo(String url) async {
+    final String binaryPath = _getBinaryPath();
+
+    final binary = File(binaryPath);
+    if (!binary.existsSync()) {
+      throw Exception('Missing Component: yt-dlp binary not found at $binaryPath');
+    }
+
+    // Ensure binary has execute permissions
+    await _ensureExecutablePermissions(binaryPath);
+
+    try {
+      final result = await Process.run(binaryPath, [
+        '--dump-json',
+        '--no-playlist',
+        url,
+      ]);
+
+      if (result.exitCode == 0) {
+        final json = jsonDecode(result.stdout);
+        return {
+          'title': json['title'] ?? 'Unknown',
+          'thumbnail': json['thumbnail'] ?? '',
+          'duration': json['duration']?.toString() ?? '',
+          'uploader': json['uploader'] ?? '',
+        };
+      }
+    } catch (e) {
+      // Silently fail, video info is optional
+    }
+
+    return {};
+  }
+
+  // Download with detailed progress information
+  Stream<Map<String, dynamic>> downloadVideoWithProgress(
+    String url,
+    String quality, {
+    bool audioOnly = false,
+    bool preferMpeg = false,
+  }) async* {
+    final String binaryPath = _getBinaryPath();
+
+    final binary = File(binaryPath);
+    if (!binary.existsSync()) {
+      throw Exception('Missing Component: yt-dlp binary not found at $binaryPath');
+    }
+
+    // Ensure binary has execute permissions
+    await _ensureExecutablePermissions(binaryPath);
+
+    // Build the command with format preferences
+    final args = [
+      '--newline',
+      '--progress',
+      '-o',
+      '%(title)s.%(ext)s',
+    ];
+
+    if (audioOnly) {
+      args.addAll(['-x', '--audio-format', preferMpeg ? 'mp3' : 'best']);
+    } else {
+      if (preferMpeg) {
+        args.addAll(['--recode-video', 'mp4']);
+      }
+      args.addAll(['-f', _getFormatString(quality)]);
+    }
+
+    args.add(url);
+
+    // Spawn the process
+    final process = await Process.start(binaryPath, args);
+
+    // Regex patterns for parsing progress
+    final progressRegex = RegExp(r'\[download\]\s+(\d+\.?\d*)%');
+    final speedRegex = RegExp(r'at\s+([^\s]+/s)');
+    final sizeRegex = RegExp(r'of\s+([^\s]+)');
+    final etaRegex = RegExp(r'ETA\s+(\d+:\d+:\d+|\d+:\d+)');
+    final destinationRegex = RegExp(r'\[download\] Destination: (.+)');
+
+    String currentPath = '';
+    
+    await for (final line in process.stdout.transform(systemEncoding.decoder)) {
+      // Extract destination path
+      final destMatch = destinationRegex.firstMatch(line);
+      if (destMatch != null) {
+        currentPath = destMatch.group(1) ?? '';
+      }
+
+      // Extract progress percentage
+      final progressMatch = progressRegex.firstMatch(line);
+      if (progressMatch != null) {
+        final percentageStr = progressMatch.group(1);
+        if (percentageStr != null) {
+          final percentage = double.parse(percentageStr) / 100.0;
+
+          // Extract other metrics
+          final speedMatch = speedRegex.firstMatch(line);
+          final sizeMatch = sizeRegex.firstMatch(line);
+          final etaMatch = etaRegex.firstMatch(line);
+
+          yield {
+            'progress': percentage,
+            'speed': speedMatch?.group(1) ?? '',
+            'fileSize': sizeMatch?.group(1) ?? '',
+            'eta': etaMatch?.group(1) ?? '0:00:00',
+            'path': currentPath,
+          };
+        }
+      }
+    }
+
+    // Wait for process to complete
+    final exitCode = await process.exitCode;
+    if (exitCode != 0) {
+      final errors = await process.stderr.transform(systemEncoding.decoder).join();
+      throw Exception('Download failed: $errors');
+    }
+
+    // Signal completion
+    yield {
+      'progress': 1.0,
+      'speed': '',
+      'fileSize': '',
+      'eta': '0:00:00',
+      'path': currentPath,
+    };
+  }
+
+  Stream<double> downloadVideo(String url, String quality) async* {
+    // Locate the yt-dlp binary
+    final String binaryPath = _getBinaryPath();
+
+    // Self-healing check: verify binary exists
+    final binary = File(binaryPath);
+    if (!binary.existsSync()) {
+      throw Exception('Missing Component: yt-dlp binary not found at $binaryPath');
+    }
+
+    // Build the command
+    final args = [
+      '--newline',
+      '-f',
+      _getFormatString(quality),
+      url,
+    ];
+
+    // Spawn the background process
+    final process = await Process.start(binaryPath, args);
+
+    // Regex to extract progress percentage
+    final progressRegex = RegExp(r'\[download\]\s+(\d+\.?\d*)%');
+
+    // Listen to stdout stream
+    await for (final line in process.stdout.transform(systemEncoding.decoder)) {
+      final match = progressRegex.firstMatch(line);
+      if (match != null) {
+        final percentageStr = match.group(1);
+        if (percentageStr != null) {
+          final percentage = double.parse(percentageStr) / 100.0;
+          yield percentage;
+        }
+      }
+    }
+
+    // Wait for process to complete
+    final exitCode = await process.exitCode;
+    if (exitCode != 0) {
+      final errors = await process.stderr.transform(systemEncoding.decoder).join();
+      throw Exception('Download failed with exit code $exitCode: $errors');
+    }
+
+    // Signal completion
+    yield 1.0;
+  }
+
+  String _getBinaryPath() {
+    if (Platform.isWindows) {
+      return 'bin/yt-dlp.exe';
+    } else {
+      return 'bin/yt-dlp';
+    }
+  }
+
+  Future<void> _ensureExecutablePermissions(String binaryPath) async {
+    if (!Platform.isWindows) {
+      final binary = File(binaryPath);
+      if (binary.existsSync()) {
+        // Make the binary executable using chmod
+        await Process.run('chmod', ['+x', binaryPath]);
+      }
+    }
+  }
+
+  String _getFormatString(String quality) {
+    switch (quality) {
+      case '2160p':
+        return 'bestvideo[height<=2160]+bestaudio/best';
+      case '1440p':
+        return 'bestvideo[height<=1440]+bestaudio/best';
+      case '1080p':
+        return 'bestvideo[height<=1080]+bestaudio/best';
+      case '720p':
+        return 'bestvideo[height<=720]+bestaudio/best';
+      case '480p':
+        return 'bestvideo[height<=480]+bestaudio/best';
+      case '360p':
+        return 'bestvideo[height<=360]+bestaudio/best';
+      case 'Audio Only':
+        return 'bestaudio';
+      default:
+        return 'bestvideo+bestaudio/best';
+    }
+  }
+}
