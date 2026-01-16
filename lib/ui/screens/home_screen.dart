@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/download_provider.dart';
 import '../../core/models.dart';
 import '../../core/constants.dart';
+import '../../core/theme.dart';
 import '../widgets/glass_input.dart';
 import '../widgets/action_button.dart';
 import '../widgets/thumbnail_preview.dart';
@@ -58,29 +59,35 @@ class _InputScreenState extends State<InputScreen> {
     final provider = Provider.of<DownloadProvider>(context);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-            tooltip: 'Settings',
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+            child: IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                );
+              },
+              tooltip: 'Settings',
+            ),
           ),
         ],
       ),
       body: Center(
         child: Container(
           width: AppConstants.inputScreenWidth,
+          constraints: const BoxConstraints(maxWidth: 800),
           padding: const EdgeInsets.all(AppConstants.spacingXLarge),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Logo and Title (not inside a card)
               Row(
                 children: [
                   Image.asset(
@@ -104,7 +111,7 @@ class _InputScreenState extends State<InputScreen> {
                         Text(
                           AppConstants.appSubtitle,
                           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Colors.grey,
+                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                               ),
                         ),
                       ],
@@ -113,17 +120,25 @@ class _InputScreenState extends State<InputScreen> {
                 ],
               ),
               const SizedBox(height: AppConstants.spacingXXLarge),
-              GlassInput(
-                controller: _urlController,
-                hintText: AppConstants.urlHint,
-                prefixIcon: Icons.link,
-                onSubmitted: (_) => provider.fetchVideoInfo(_urlController.text),
-              ),
-              const SizedBox(height: AppConstants.spacingLarge),
-              ActionButton(
-                onPressed: () => provider.fetchVideoInfo(_urlController.text),
-                label: 'Continue',
-                isLoading: provider.isFetchingInfo,
+              // Input Card
+              _buildCard(
+                context,
+                child: Column(
+                  children: [
+                    GlassInput(
+                      controller: _urlController,
+                      hintText: AppConstants.urlHint,
+                      prefixIcon: Icons.link,
+                      onSubmitted: (_) => provider.fetchVideoInfo(_urlController.text),
+                    ),
+                    const SizedBox(height: AppConstants.spacingLarge),
+                    ActionButton(
+                      onPressed: () => provider.fetchVideoInfo(_urlController.text),
+                      label: 'Continue',
+                      isLoading: provider.isFetchingInfo,
+                    ),
+                  ],
+                ),
               ),
               if (provider.statusMessage.isNotEmpty)
                 Padding(
@@ -133,7 +148,7 @@ class _InputScreenState extends State<InputScreen> {
                     style: TextStyle(
                       color: provider.statusMessage.startsWith('Error')
                           ? Colors.red
-                          : Colors.grey,
+                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
@@ -143,6 +158,33 @@ class _InputScreenState extends State<InputScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, {required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.black.withOpacity(0.05),
+        ),
+        boxShadow: Theme.of(context).brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: child,
     );
   }
 }
@@ -306,12 +348,18 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 2, child: _buildVideoInfo(context, provider)),
+            Expanded(
+              flex: 2,
+              child: _buildCard(context, child: _buildVideoInfo(context, provider)),
+            ),
             const SizedBox(width: AppConstants.spacingXLarge),
             Expanded(
               flex: 3,
-              child: _buildDownloadOptions(
-                  context, provider, qualityOptions, formatOptions),
+              child: _buildCard(
+                context,
+                child: _buildDownloadOptions(
+                    context, provider, qualityOptions, formatOptions),
+              ),
             ),
           ],
         ),
@@ -326,13 +374,43 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
         padding: const EdgeInsets.all(AppConstants.spacingLarge),
         child: Column(
           children: [
-            _buildVideoInfo(context, provider),
+            _buildCard(context, child: _buildVideoInfo(context, provider)),
             const SizedBox(height: AppConstants.spacingLarge),
-            _buildDownloadOptions(
-                context, provider, qualityOptions, formatOptions),
+            _buildCard(
+              context,
+              child: _buildDownloadOptions(
+                  context, provider, qualityOptions, formatOptions),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, {required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.black.withOpacity(0.05),
+        ),
+        boxShadow: Theme.of(context).brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: child,
     );
   }
 
@@ -544,7 +622,9 @@ class DownloadingScreen extends StatelessWidget {
     final provider = Provider.of<DownloadProvider>(context);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -568,53 +648,83 @@ class DownloadingScreen extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(maxWidth: AppConstants.inputScreenWidth),
           padding: const EdgeInsets.all(AppConstants.spacingXLarge),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const Text(
-                'Downloading',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppConstants.spacingLarge),
-              if (provider.videoInfo != null)
+          child: _buildCard(
+            context,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'Downloading',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: AppConstants.spacingLarge),
+                if (provider.videoInfo != null)
+                  Text(
+                    provider.videoInfo!.title,
+                    style: const TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                const SizedBox(height: AppConstants.spacingLarge),
+                ThumbnailPreview(
+                  imageUrl: provider.videoInfo?.thumbnail ?? '',
+                  width: 320,
+                  height: 180,
+                ),
+                const SizedBox(height: AppConstants.spacingXLarge),
+                CoolProgressBar(
+                  progress: provider.progress,
+                  height: 10,
+                ),
+                const SizedBox(height: AppConstants.spacingMedium),
                 Text(
-                  provider.videoInfo!.title,
-                  style: const TextStyle(fontSize: 16),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  '${(provider.progress * 100).toStringAsFixed(1)}%',
+                  style:
+                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
-              const SizedBox(height: AppConstants.spacingLarge),
-              ThumbnailPreview(
-                imageUrl: provider.videoInfo?.thumbnail ?? '',
-                width: 320,
-                height: 180,
-              ),
-              const SizedBox(height: AppConstants.spacingXLarge),
-              CoolProgressBar(
-                progress: provider.progress,
-                height: 10,
-              ),
-              const SizedBox(height: AppConstants.spacingMedium),
-              Text(
-                '${(provider.progress * 100).toStringAsFixed(1)}%',
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppConstants.spacingSmall),
-              Text(
-                '${provider.timeRemaining} - ${provider.fileSize} (${provider.downloadSpeed})',
-                style: TextStyle(
-                  fontSize: 14,
-                  color:
-                      Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                const SizedBox(height: AppConstants.spacingSmall),
+                Text(
+                  '${provider.timeRemaining} - ${provider.fileSize} (${provider.downloadSpeed})',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color:
+                        Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, {required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.black.withOpacity(0.05),
+        ),
+        boxShadow: Theme.of(context).brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: child,
     );
   }
 }
@@ -630,7 +740,9 @@ class CompletionScreen extends StatelessWidget {
     final provider = Provider.of<DownloadProvider>(context);
 
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -642,58 +754,88 @@ class CompletionScreen extends StatelessWidget {
         child: Container(
           constraints: const BoxConstraints(maxWidth: AppConstants.inputScreenWidth),
           padding: const EdgeInsets.all(AppConstants.spacingXLarge),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppConstants.spacingLarge),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.check_circle,
-                  size: 80,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: AppConstants.spacingXLarge),
-              const Text(
-                'Download Complete',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppConstants.spacingMedium),
-              if (provider.videoInfo != null)
-                Text(
-                  provider.videoInfo!.title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.6),
+          child: _buildCard(
+            context,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(AppConstants.spacingLarge),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    shape: BoxShape.circle,
                   ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  child: Icon(
+                    Icons.check_circle,
+                    size: 80,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
-              const SizedBox(height: AppConstants.spacingXXLarge),
-              ActionButton(
-                onPressed: provider.openDownloadLocation,
-                label: 'Open Folder',
-                icon: Icons.folder_open,
-              ),
-              const SizedBox(height: AppConstants.spacingMedium),
-              ActionButton(
-                onPressed: provider.reset,
-                label: 'Download Another',
-                icon: Icons.add,
-                isPrimary: false,
-              ),
-            ],
+                const SizedBox(height: AppConstants.spacingXLarge),
+                const Text(
+                  'Download Complete',
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: AppConstants.spacingMedium),
+                if (provider.videoInfo != null)
+                  Text(
+                    provider.videoInfo!.title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(0.6),
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                const SizedBox(height: AppConstants.spacingXXLarge),
+                ActionButton(
+                  onPressed: provider.openDownloadLocation,
+                  label: 'Open Folder',
+                  icon: Icons.folder_open,
+                ),
+                const SizedBox(height: AppConstants.spacingMedium),
+                ActionButton(
+                  onPressed: provider.reset,
+                  label: 'Download Another',
+                  icon: Icons.add,
+                  isPrimary: false,
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, {required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppTheme.surface
+            : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.black.withOpacity(0.05),
+        ),
+        boxShadow: Theme.of(context).brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: child,
     );
   }
 }

@@ -6,7 +6,8 @@ class SettingsProvider extends ChangeNotifier {
   static const String _keyDownloadPath = 'download_path';
   static const String _keyDefaultQuality = 'default_quality';
   static const String _keyDefaultAudioFormat = 'default_audio_format';
-  static const String _keyDarkMode = 'dark_mode';
+  static const String _keyDefaultVideoFormat = 'default_video_format';
+  static const String _keyThemeMode = 'theme_mode';
 
   late SharedPreferences _prefs;
   bool _isInitialized = false;
@@ -15,14 +16,22 @@ class SettingsProvider extends ChangeNotifier {
   String _downloadPath = '';
   String _defaultQuality = 'Best available';
   String _defaultAudioFormat = 'mp3';
-  bool _darkMode = true;
+  String _defaultVideoFormat = 'mp4';
+  String _themeMode = 'system'; // 'light', 'dark', or 'system'
 
   // Getters
   bool get isInitialized => _isInitialized;
   String get downloadPath => _downloadPath;
   String get defaultQuality => _defaultQuality;
   String get defaultAudioFormat => _defaultAudioFormat;
-  bool get darkMode => _darkMode;
+  String get defaultVideoFormat => _defaultVideoFormat;
+  String get themeMode => _themeMode;
+  
+  // Theme mode options
+  List<String> get themeModeOptions => ['System', 'Light', 'Dark'];
+  
+  // Legacy getter for backward compatibility
+  bool get darkMode => _themeMode == 'dark';
 
   // Quality options
   List<String> get qualityOptions => [
@@ -44,6 +53,15 @@ class SettingsProvider extends ChangeNotifier {
     'flac',
   ];
 
+  // Video format options
+  List<String> get videoFormatOptions => [
+    'mp4',
+    'mkv',
+    'webm',
+    'mov',
+    'flv',
+  ];
+
   Future<void> initialize() async {
     _prefs = await SharedPreferences.getInstance();
     
@@ -51,7 +69,8 @@ class SettingsProvider extends ChangeNotifier {
     _downloadPath = _prefs.getString(_keyDownloadPath) ?? await _getDefaultDownloadPath();
     _defaultQuality = _prefs.getString(_keyDefaultQuality) ?? 'Best available';
     _defaultAudioFormat = _prefs.getString(_keyDefaultAudioFormat) ?? 'mp3';
-    _darkMode = _prefs.getBool(_keyDarkMode) ?? true;
+    _defaultVideoFormat = _prefs.getString(_keyDefaultVideoFormat) ?? 'mp4';
+    _themeMode = _prefs.getString(_keyThemeMode) ?? 'system';
     
     _isInitialized = true;
     notifyListeners();
@@ -86,9 +105,22 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> setDefaultVideoFormat(String format) async {
+    _defaultVideoFormat = format;
+    await _prefs.setString(_keyDefaultVideoFormat, format);
+    notifyListeners();
+  }
+
+  Future<void> setThemeMode(String mode) async {
+    _themeMode = mode.toLowerCase();
+    await _prefs.setString(_keyThemeMode, _themeMode);
+    notifyListeners();
+  }
+
+  // Legacy method for backward compatibility
   Future<void> setDarkMode(bool enabled) async {
-    _darkMode = enabled;
-    await _prefs.setBool(_keyDarkMode, enabled);
+    _themeMode = enabled ? 'dark' : 'light';
+    await _prefs.setString(_keyThemeMode, _themeMode);
     notifyListeners();
   }
 

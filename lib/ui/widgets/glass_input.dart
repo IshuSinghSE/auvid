@@ -32,7 +32,10 @@ class GlassInput extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hintText,
           prefixIcon: Icon(prefixIcon, color: Colors.grey),
-          border: InputBorder.none,
+          border: OutlineInputBorder(
+            borderRadius: AppStyles.borderRadiusMedium,
+            borderSide: BorderSide.none,
+          ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AppConstants.spacingMedium,
             vertical: AppConstants.spacingMedium,

@@ -22,12 +22,27 @@ class VideoDownloaderApp extends StatelessWidget {
       value: settingsProvider,
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {
+          // Determine theme mode
+          ThemeMode themeMode;
+          switch (settings.themeMode) {
+            case 'light':
+              themeMode = ThemeMode.light;
+              break;
+            case 'dark':
+              themeMode = ThemeMode.dark;
+              break;
+            case 'system':
+            default:
+              themeMode = ThemeMode.system;
+              break;
+          }
+          
           return MaterialApp(
             title: 'auvid',
             debugShowCheckedModeBanner: false,
-            theme: settings.darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+            theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: themeMode,
             home: const HomeScreen(),
           );
         },

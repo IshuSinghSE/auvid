@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../core/theme.dart';
@@ -13,7 +14,7 @@ class SettingsScreen extends StatelessWidget {
     return Consumer<SettingsProvider>(
       builder: (context, settings, _) {
         return Scaffold(
-          backgroundColor: AppTheme.background,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -33,17 +34,20 @@ class SettingsScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(24),
                 children: [
                   // GENERAL SECTION
-                  _buildSectionHeader("GENERAL"),
+                  _buildSectionHeader(context, "GENERAL"),
                   _buildSettingsCard(
+                    context: context,
                     children: [
                       _buildTile(
+                        context: context,
                         icon: Icons.folder_open_rounded,
                         title: "Download Location",
                         subtitle: settings.getDisplayPath(),
                         onTap: () => _selectDownloadFolder(context, settings),
                       ),
-                      _buildDivider(),
+                      _buildDivider(context),
                       _buildDropdownTile(
+                        context: context,
                         icon: Icons.hd_outlined,
                         title: "Default Quality",
                         value: settings.defaultQuality,
@@ -52,8 +56,20 @@ class SettingsScreen extends StatelessWidget {
                           if (val != null) settings.setDefaultQuality(val);
                         },
                       ),
-                      _buildDivider(),
+                      _buildDivider(context),
                       _buildDropdownTile(
+                        context: context,
+                        icon: Icons.movie_outlined,
+                        title: "Default Video Format",
+                        value: settings.defaultVideoFormat.toUpperCase(),
+                        items: settings.videoFormatOptions.map((e) => e.toUpperCase()).toList(),
+                        onChanged: (val) {
+                          if (val != null) settings.setDefaultVideoFormat(val.toLowerCase());
+                        },
+                      ),
+                      _buildDivider(context),
+                      _buildDropdownTile(
+                        context: context,
                         icon: Icons.audio_file_outlined,
                         title: "Default Audio Format",
                         value: settings.defaultAudioFormat.toUpperCase(),
@@ -68,18 +84,23 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   // APPEARANCE SECTION
-                  _buildSectionHeader("APPEARANCE"),
+                  _buildSectionHeader(context, "APPEARANCE"),
                   _buildSettingsCard(
+                    context: context,
                     children: [
-                      _buildSwitchTile(
-                        icon: Icons.dark_mode_outlined,
-                        title: "Dark Mode",
-                        subtitle: "Uses the Auvid minimal theme",
-                        value: settings.darkMode,
-                        onChanged: (val) => settings.setDarkMode(val),
+                      _buildDropdownTile(
+                        context: context,
+                        icon: Icons.brightness_6_outlined,
+                        title: "Theme",
+                        value: settings.themeMode[0].toUpperCase() + settings.themeMode.substring(1),
+                        items: settings.themeModeOptions,
+                        onChanged: (val) {
+                          if (val != null) settings.setThemeMode(val);
+                        },
                       ),
-                      _buildDivider(),
+                      _buildDivider(context),
                       _buildTile(
+                        context: context,
                         icon: Icons.palette_outlined,
                         title: "Accent Color",
                         subtitle: "Auvid Purple",
@@ -87,9 +108,9 @@ class SettingsScreen extends StatelessWidget {
                           width: 24,
                           height: 24,
                           decoration: BoxDecoration(
-                            color: AppTheme.primary,
+                            color: Theme.of(context).primaryColor,
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
+                            border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, width: 2),
                           ),
                         ),
                       ),
@@ -99,27 +120,15 @@ class SettingsScreen extends StatelessWidget {
                   const SizedBox(height: 32),
 
                   // SYSTEM & ABOUT
-                  _buildSectionHeader("SYSTEM"),
+                  _buildSectionHeader(context, "SYSTEM"),
                   _buildSettingsCard(
+                    context: context,
                     children: [
                       _buildTile(
-                        icon: Icons.terminal_rounded,
-                        title: "Engine Version",
-                        subtitle: "yt-dlp (bundled)",
-                        trailing: const Text(
-                          "Stable",
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      _buildDivider(),
-                      _buildTile(
+                        context: context,
                         icon: Icons.info_outline_rounded,
-                        title: "About Auvid",
-                        subtitle: "v1.0.0 • Built with Flutter",
+                        title: "About",
+                        subtitle: "v1.0.0",
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => const AboutScreen()),
@@ -141,13 +150,14 @@ class SettingsScreen extends StatelessWidget {
 
   // --- HELPER WIDGETS ---
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(left: 12, bottom: 12),
       child: Text(
         title,
-        style: const TextStyle(
-          color: AppTheme.primary,
+        style: TextStyle(
+          color: theme.primaryColor,
           fontSize: 12,
           fontWeight: FontWeight.bold,
           letterSpacing: 1.5,
@@ -156,108 +166,91 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingsCard({required List<Widget> children}) {
+  Widget _buildSettingsCard({required BuildContext context, required List<Widget> children}) {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(
+          color: theme.brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.05)
+              : Colors.black.withOpacity(0.05),
+        ),
       ),
       child: Column(children: children),
     );
   }
 
   Widget _buildTile({
+    required BuildContext context,
     required IconData icon,
     required String title,
     String? subtitle,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppTheme.background,
+          color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: AppTheme.primary, size: 20),
+        child: Icon(icon, color: theme.primaryColor, size: 20),
       ),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
       subtitle: subtitle != null
-          ? Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 13))
+          ? Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withOpacity(0.7), fontSize: 13))
           : null,
-      trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey, size: 18),
+      trailing: trailing ?? Icon(Icons.chevron_right, color: theme.textTheme.bodySmall?.color?.withOpacity(0.6), size: 18),
     );
   }
 
-  Widget _buildSwitchTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required Function(bool) onChanged,
-  }) {
-    return SwitchListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      activeColor: AppTheme.primary,
-      secondary: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: AppTheme.background,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: value ? AppTheme.primary : Colors.grey, size: 20),
-      ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
-      ),
-      subtitle: Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-      value: value,
-      onChanged: onChanged,
-    );
-  }
+
 
   Widget _buildDropdownTile({
+    required BuildContext context,
     required IconData icon,
     required String title,
     required String value,
     required List<String> items,
     required Function(String?) onChanged,
   }) {
+    final theme = Theme.of(context);
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: AppTheme.background,
+          color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: AppTheme.primary, size: 20),
+        child: Icon(icon, color: theme.primaryColor, size: 20),
       ),
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white),
+        style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
       trailing: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
         decoration: BoxDecoration(
-          color: AppTheme.background,
+          color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
+          border: Border.all(color: theme.brightness == Brightness.dark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.06)),
         ),
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: value,
-            dropdownColor: AppTheme.surface,
-            icon: const Icon(Icons.arrow_drop_down, color: Colors.white),
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            dropdownColor: theme.cardColor,
+            icon: Icon(Icons.arrow_drop_down, color: theme.textTheme.bodySmall?.color),
+            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
             items: items.map((String value) {
               return DropdownMenuItem<String>(
                 value: value,
@@ -271,10 +264,13 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildDivider(BuildContext context) {
+    final theme = Theme.of(context);
     return Divider(
       height: 1,
-      color: Colors.white.withOpacity(0.05),
+      color: theme.brightness == Brightness.dark
+          ? Colors.white.withOpacity(0.05)
+          : Colors.black.withOpacity(0.07),
       indent: 60,
       endIndent: 20,
     );
