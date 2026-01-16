@@ -17,18 +17,23 @@ class AboutScreen extends StatelessWidget {
         ),
         title: const Text('About'),
       ),
-      body: SingleChildScrollView(
-        child: Center(
+      body: Center(
+        child: SingleChildScrollView(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 600),
-            padding: const EdgeInsets.all(AppConstants.spacingXLarge),
+            constraints: const BoxConstraints(maxWidth: 500),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppConstants.spacingXLarge,
+              vertical: AppConstants.spacingLarge,
+            ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 // App Icon
                 Container(
-                  width: 120,
-                  height: 120,
+                  width: 128,
+                  height: 128,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
@@ -40,67 +45,66 @@ class AboutScreen extends StatelessWidget {
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(20),
                     child: Image.asset(
-                      'assets/images/logo.png',
-                      width: 120,
-                      height: 120,
+                      'assets/images/logo_icon.png',
+                      width: 128,
+                      height: 128,
                       fit: BoxFit.cover,
                     ),
                   ),
                 ),
-                const SizedBox(height: AppConstants.spacingLarge),
+                const SizedBox(height: AppConstants.spacingMedium),
                 
                 // App Name
                 Text(
                   'auvid',
-                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                  style: Theme.of(context).textTheme.displayMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        letterSpacing: -1.5,
+                        letterSpacing: -1.0,
                       ),
                 ),
-                const SizedBox(height: AppConstants.spacingSmall),
+                const SizedBox(height: 4),
                 
                 // Version
                 Text(
                   'Version 1.0.0',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
-                const SizedBox(height: AppConstants.spacingXLarge),
+                const SizedBox(height: AppConstants.spacingLarge),
                 
                 // Description
                 Text(
-                  'A beautiful, modern audio and video downloader built with Flutter.',
+                  'A beautiful, modern audio and video downloader.',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+                      ),
                 ),
-                const SizedBox(height: AppConstants.spacingXXLarge),
+                const SizedBox(height: AppConstants.spacingLarge),
                 
                 // Features
-                _buildFeatureCard(
+                _buildFeatureRow(
                   context,
                   icon: Icons.speed,
-                  title: 'Fast Downloads',
-                  description: 'Powered by yt-dlp for reliable, high-speed downloads',
+                  title: 'Fast',
                 ),
-                const SizedBox(height: AppConstants.spacingMedium),
-                _buildFeatureCard(
+                const SizedBox(height: AppConstants.spacingSmall),
+                _buildFeatureRow(
                   context,
                   icon: Icons.palette_outlined,
-                  title: 'Beautiful Design',
-                  description: 'Modern, minimal interface with dark theme',
+                  title: 'Beautiful',
                 ),
-                const SizedBox(height: AppConstants.spacingMedium),
-                _buildFeatureCard(
+                const SizedBox(height: AppConstants.spacingSmall),
+                _buildFeatureRow(
                   context,
                   icon: Icons.source,
                   title: 'Open Source',
-                  description: 'Built with Flutter, free and open source',
                 ),
-                const SizedBox(height: AppConstants.spacingXXLarge),
+                const SizedBox(height: AppConstants.spacingLarge),
                 
                 // Links
                 Wrap(
@@ -179,53 +183,28 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureCard(
+  Widget _buildFeatureRow(
     BuildContext context, {
     required IconData icon,
     required String title,
-    required String description,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(AppConstants.spacingLarge),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: Theme.of(context).primaryColor,
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 32,
-            color: Theme.of(context).primaryColor,
+        const SizedBox(width: AppConstants.spacingSmall),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
           ),
-          const SizedBox(width: AppConstants.spacingMedium),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -237,12 +216,12 @@ class AboutScreen extends StatelessWidget {
   }) {
     return OutlinedButton.icon(
       onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
+      icon: Icon(icon, size: 16),
+      label: Text(label, style: const TextStyle(fontSize: 13)),
       style: OutlinedButton.styleFrom(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppConstants.spacingLarge,
-          vertical: AppConstants.spacingMedium,
+          horizontal: AppConstants.spacingMedium,
+          vertical: AppConstants.spacingSmall,
         ),
       ),
     );

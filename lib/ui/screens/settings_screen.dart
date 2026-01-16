@@ -22,73 +22,90 @@ class SettingsScreen extends StatelessWidget {
             ),
             title: const Text('Settings'),
           ),
-          body: ListView(
-            padding: const EdgeInsets.symmetric(vertical: AppConstants.spacingMedium),
-            children: [
-              _buildSectionHeader(context, 'General'),
-              _buildSettingsTile(
-                context,
-                icon: Icons.folder_outlined,
-                title: 'Download Location',
-                subtitle: settings.getDisplayPath(),
-                onTap: () => _selectDownloadFolder(context, settings),
+          body: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 700),
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  vertical: AppConstants.spacingLarge,
+                  horizontal: AppConstants.spacingXLarge,
+                ),
+                children: [
+                  const SizedBox(height: AppConstants.spacingMedium),
+                  _buildSectionHeader(context, 'General'),
+                  const SizedBox(height: AppConstants.spacingSmall),
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.folder_outlined,
+                    title: 'Download Location',
+                    subtitle: settings.getDisplayPath(),
+                    onTap: () => _selectDownloadFolder(context, settings),
+                  ),
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.high_quality,
+                    title: 'Default Quality',
+                    subtitle: settings.defaultQuality,
+                    onTap: () => _showQualityPicker(context, settings),
+                  ),
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.audio_file_outlined,
+                    title: 'Default Audio Format',
+                    subtitle: settings.defaultAudioFormat.toUpperCase(),
+                    onTap: () => _showAudioFormatPicker(context, settings),
+                  ),
+                  const SizedBox(height: AppConstants.spacingMedium),
+                  const Divider(height: 1),
+                  const SizedBox(height: AppConstants.spacingLarge),
+                  _buildSectionHeader(context, 'Appearance'),
+                  const SizedBox(height: AppConstants.spacingSmall),
+                  _buildSwitchTile(
+                    context,
+                    icon: Icons.dark_mode_outlined,
+                    title: 'Dark Mode',
+                    subtitle: 'Always use dark theme',
+                    value: settings.darkMode,
+                    onChanged: (value) => settings.setDarkMode(value),
+                  ),
+                  const SizedBox(height: AppConstants.spacingMedium),
+                  const Divider(height: 1),
+                  const SizedBox(height: AppConstants.spacingLarge),
+                  _buildSectionHeader(context, 'About'),
+                  const SizedBox(height: AppConstants.spacingSmall),
+                  _buildSettingsTile(
+                    context,
+                    icon: Icons.info_outline,
+                    title: 'About',
+                    subtitle: 'Version, credits, and more',
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AboutScreen()),
+                      );
+                    },
+                  ),
+                  // _buildSettingsTile(
+                  //   context,
+                  //   icon: Icons.code,
+                  //   title: 'Open Source Licenses',
+                  //   subtitle: 'View licenses',
+                  //   onTap: () {
+                  //     showLicensePage(
+                  //       context: context,
+                  //       applicationName: 'auvid',
+                  //       applicationVersion: '1.0.0',
+                  //       applicationIcon: Image.asset(
+                  //         'assets/images/logo.png',
+                  //         width: 48,
+                  //         height: 48,
+                  //       ),
+                  //     );
+                  //   },
+                  // ),
+                  const SizedBox(height: AppConstants.spacingXLarge),
+                ],
               ),
-              _buildSettingsTile(
-                context,
-                icon: Icons.high_quality,
-                title: 'Default Quality',
-                subtitle: settings.defaultQuality,
-                onTap: () => _showQualityPicker(context, settings),
-              ),
-              _buildSettingsTile(
-                context,
-                icon: Icons.audio_file_outlined,
-                title: 'Default Audio Format',
-                subtitle: settings.defaultAudioFormat.toUpperCase(),
-                onTap: () => _showAudioFormatPicker(context, settings),
-              ),
-              const Divider(height: 32),
-              _buildSectionHeader(context, 'Appearance'),
-              _buildSwitchTile(
-                context,
-                icon: Icons.dark_mode_outlined,
-                title: 'Dark Mode',
-                subtitle: 'Always use dark theme',
-                value: settings.darkMode,
-                onChanged: (value) => settings.setDarkMode(value),
-              ),
-              const Divider(height: 32),
-              _buildSectionHeader(context, 'About'),
-              _buildSettingsTile(
-                context,
-                icon: Icons.info_outline,
-                title: 'About auvid',
-                subtitle: 'Version, credits, and more',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const AboutScreen()),
-                  );
-                },
-              ),
-              _buildSettingsTile(
-                context,
-                icon: Icons.code,
-                title: 'Open Source Licenses',
-                subtitle: 'View licenses',
-                onTap: () {
-                  showLicensePage(
-                    context: context,
-                    applicationName: 'auvid',
-                    applicationVersion: '1.0.0',
-                    applicationIcon: Image.asset(
-                      'assets/images/logo.png',
-                      width: 48,
-                      height: 48,
-                    ),
-                  );
-                },
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -106,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
         await settings.setDownloadPath(result);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Download location updated: \${settings.getDisplayPath()}')),
+            SnackBar(content: Text('Download location updated: ${settings.getDisplayPath()}')),
           );
         }
       }
@@ -150,7 +167,7 @@ class SettingsScreen extends StatelessWidget {
       await settings.setDefaultQuality(selected);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Default quality set to: \$selected')),
+          SnackBar(content: Text('Default quality set to: $selected')),
         );
       }
     }

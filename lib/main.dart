@@ -25,7 +25,9 @@ class VideoDownloaderApp extends StatelessWidget {
           return MaterialApp(
             title: 'auvid',
             debugShowCheckedModeBanner: false,
-            theme: AppTheme.darkTheme,
+            theme: settings.darkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
             home: const HomeScreen(),
           );
         },

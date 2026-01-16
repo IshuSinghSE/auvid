@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart';
+import '../../core/theme.dart';
 
 /// A styled action button with loading state support
 class ActionButton extends StatelessWidget {
@@ -53,17 +54,31 @@ class ActionButton extends StatelessWidget {
       width: width ?? double.infinity,
       height: height,
       child: isPrimary
-          ? ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: AppStyles.borderRadiusMedium,
-                ),
-                elevation: 0,
+          ? Container(
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: AppStyles.borderRadiusMedium,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              onPressed: isLoading ? null : onPressed,
-              child: buttonChild,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppStyles.borderRadiusMedium,
+                  ),
+                  elevation: 0,
+                ),
+                onPressed: isLoading ? null : onPressed,
+                child: buttonChild,
+              ),
             )
           : OutlinedButton(
               style: OutlinedButton.styleFrom(
