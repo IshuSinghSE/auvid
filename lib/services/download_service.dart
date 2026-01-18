@@ -126,12 +126,23 @@ class DownloadService {
     final prefixArgs = cmd.length > 1 ? cmd.sublist(1) : <String>[];
     await _ensureExecutablePermissions(exe);
 
+    // Determine download directory (prefer Downloads, works with Flatpak xdg-download permission)
+    final isFlatpak = Platform.environment['FLATPAK_ID'] != null;
+    final home = Platform.environment['HOME'] ?? Directory.current.path;
+    final downloadDir = Directory('${home}${Platform.pathSeparator}Downloads');
+    if (!downloadDir.existsSync()) {
+      try {
+        downloadDir.createSync(recursive: true);
+      } catch (_) {}
+    }
+
     // Build the command with format preferences
+    final outputTemplate = '${downloadDir.path}${Platform.pathSeparator}%(title)s.%(ext)s';
     final args = [
       '--newline',
       '--progress',
       '-o',
-      '%(title)s.%(ext)s',
+      outputTemplate,
     ];
 
     if (extractAudio) {
@@ -175,6 +186,8 @@ class DownloadService {
     final sizeRegex = RegExp(r'of\s+([^\s]+)');
     final etaRegex = RegExp(r'ETA\s+(\d+:\d+:\d+|\d+:\d+)');
     final destinationRegex = RegExp(r'\[download\] Destination: (.+)');
+    final mergerRegex = RegExp(r'\[Merger\] Merging formats into\s+"?([^"\n]+)"?');
+    final deletingRegex = RegExp(r'Deleting original file (.+) \(pass -k to keep\)');
 
     String currentPath = '';
     
@@ -185,6 +198,18 @@ class DownloadService {
       final destMatch = destinationRegex.firstMatch(line);
       if (destMatch != null) {
         currentPath = destMatch.group(1) ?? '';
+      }
+
+      // Capture the merged output name
+      final mergeMatch = mergerRegex.firstMatch(line);
+      if (mergeMatch != null) {
+        currentPath = mergeMatch.group(1) ?? currentPath;
+      }
+
+      // Sometimes yt-dlp deletes originals after merging; use that to infer path if needed
+      final delMatch = deletingRegex.firstMatch(line);
+      if (delMatch != null && currentPath.isEmpty) {
+        currentPath = delMatch.group(1) ?? '';
       }
 
       // Extract progress percentage
