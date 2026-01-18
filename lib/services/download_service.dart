@@ -6,13 +6,16 @@ import '../core/models.dart';
 class DownloadService {
   // Get comprehensive video information including available formats
   Future<VideoInfo?> getVideoInfo(String url) async {
-    final String binaryPath = _getBinaryPath();
-    
-    // Ensure binary has execute permissions
-    await _ensureExecutablePermissions(binaryPath);
+    final cmd = _getBinaryCommandParts();
+    final exe = cmd.first;
+    final prefixArgs = cmd.length > 1 ? cmd.sublist(1) : <String>[];
+
+    // Ensure binary has execute permissions if it's a file
+    await _ensureExecutablePermissions(exe);
 
     try {
-      final result = await Process.run(binaryPath, [
+      final result = await Process.run(exe, [
+        ...prefixArgs,
         '--dump-json',
         '--no-playlist',
         url,
@@ -117,8 +120,10 @@ class DownloadService {
     bool extractAudio = false,
     String audioFormat = 'mp3',
   }) async* {
-    final String binaryPath = _getBinaryPath();
-    await _ensureExecutablePermissions(binaryPath);
+    final cmd = _getBinaryCommandParts();
+    final exe = cmd.first;
+    final prefixArgs = cmd.length > 1 ? cmd.sublist(1) : <String>[];
+    await _ensureExecutablePermissions(exe);
 
     // Build the command with format preferences
     final args = [
@@ -142,7 +147,7 @@ class DownloadService {
     args.add(url);
 
     // Spawn the process
-    final process = await Process.start(binaryPath, args);
+    final process = await Process.start(exe, [...prefixArgs, ...args]);
 
     // Yield initial progress
     yield {
@@ -220,8 +225,10 @@ class DownloadService {
 
   Stream<double> downloadVideo(String url, String quality) async* {
     // Locate the yt-dlp binary
-    final String binaryPath = _getBinaryPath();
-    await _ensureExecutablePermissions(binaryPath);
+    final cmd = _getBinaryCommandParts();
+    final exe = cmd.first;
+    final prefixArgs = cmd.length > 1 ? cmd.sublist(1) : <String>[];
+    await _ensureExecutablePermissions(exe);
 
     // Build the command
     final args = [
@@ -232,7 +239,7 @@ class DownloadService {
     ];
 
     // Spawn the background process
-    final process = await Process.start(binaryPath, args);
+    final process = await Process.start(exe, [...prefixArgs, ...args]);
 
     // Regex to extract progress percentage
     final progressRegex = RegExp(r'\[download\]\s+(\d+\.?\d*)%');
@@ -272,10 +279,36 @@ class DownloadService {
     }
   }
 
+  List<String> _getBinaryCommandParts() {
+    if (Platform.isWindows) {
+      return ['bin/yt-dlp.exe'];
+    } else if (Platform.isMacOS) {
+      return ['bin/yt-dlp_macos'];
+    } else if (Platform.isLinux) {
+      final candidates = [
+        'bin/yt-dlp_linux',
+        '/app/bin/bin/yt-dlp_linux',
+        '/app/bin/yt-dlp_linux',
+        'yt-dlp',
+      ];
+      for (final p in candidates) {
+        try {
+          if (File(p).existsSync()) return [p];
+        } catch (_) {}
+      }
+      return ['python3', '-m', 'yt_dlp'];
+    } else {
+      return ['bin/yt-dlp'];
+    }
+  }
+
   Future<void> _ensureExecutablePermissions(String binaryPath) async {
     if (!Platform.isWindows) {
       try {
-        await Process.run('chmod', ['+x', binaryPath]);
+        // Only chmod if the path is an existing file
+        if (File(binaryPath).existsSync()) {
+          await Process.run('chmod', ['+x', binaryPath]);
+        }
       } catch (e) {
         // Permissions already set or chmod not available
       }

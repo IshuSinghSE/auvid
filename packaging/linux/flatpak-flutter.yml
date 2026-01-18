@@ -56,4 +56,4 @@ modules:
 
       - type: git
         url: https://github.com/IshuSinghSE/auvid.git
-        commit : b71c2dc3c225ada573e8ee0d063317aa600c1473
+        commit : 86430aa5623e5e0f81bad7344186e8ad0b095716
