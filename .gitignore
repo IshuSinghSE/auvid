@@ -53,7 +53,10 @@ app.*.map.json
 *.webm
 
 # packaging/build outputs
-/flatpak-flutter/
-/builds/
-/build-dir/
-.flatpak-builder/
+/flatpak-flutter
+/builds
+/build-dir
+.flatpak-builder
+/temp
+/venv
+/repo

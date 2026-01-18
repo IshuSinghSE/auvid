@@ -265,8 +265,10 @@ class DownloadService {
       return 'bin/yt-dlp.exe';
     } else if (Platform.isMacOS) {
       return 'bin/yt-dlp_macos';
-    } else {
+    } else if (Platform.isLinux) {
       return 'bin/yt-dlp_linux';
+    } else{
+      return 'bin/yt-dlp';
     }
   }
 
