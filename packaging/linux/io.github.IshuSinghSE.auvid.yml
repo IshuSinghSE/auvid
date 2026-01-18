@@ -16,6 +16,18 @@ finish-args:
   - --filesystem=xdg-download
   - --talk-name=org.freedesktop.Notifications
 modules:
+  - name: ffmpeg-static
+    buildsystem: simple
+    build-commands:
+      - mkdir -p ffmpeg-tmp
+      - wget -O ffmpeg-static.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+      - tar -xJf ffmpeg-static.tar.xz -C ffmpeg-tmp --strip-components=1
+      - install -Dm755 ffmpeg-tmp/ffmpeg /app/bin/ffmpeg
+      - install -Dm755 ffmpeg-tmp/ffprobe /app/bin/ffprobe
+    sources:
+      - type: file
+        url: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+        sha256 : abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67
   - name: python3-yt-dlp
     buildsystem: simple
     build-commands:
@@ -53,7 +65,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/IshuSinghSE/auvid.git
-        commit: 86430aa5623e5e0f81bad7344186e8ad0b095716
+        commit: 76dc3294805456f50773b8341706274fbcd6a6e7
       - generated/sources/pubspec.json
     modules:
       - generated/modules/flutter-sdk-3.38.5.json

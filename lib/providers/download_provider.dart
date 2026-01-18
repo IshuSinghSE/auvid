@@ -131,6 +131,7 @@ class DownloadProvider extends ChangeNotifier {
         quality,
         extractAudio: _extractAudio,
         audioFormat: _audioFormat,
+        desiredExt: _selectedFormatExt,
       )) {
         _progress = data['progress'] ?? 0.0;
         _downloadSpeed = data['speed'] ?? '';
@@ -166,7 +167,21 @@ class DownloadProvider extends ChangeNotifier {
   void openDownloadLocation() {
     if (_downloadPath.isNotEmpty) {
       final dir = Directory(_downloadPath).parent.path;
-      Process.run('xdg-open', [dir]);
+      final isFlatpak = Platform.environment['FLATPAK_ID'] != null;
+
+      try {
+        if (Platform.isWindows) {
+          Process.run('explorer', [dir]);
+        } else if (Platform.isMacOS) {
+          Process.run('open', [dir]);
+        } else {
+          // On Flatpak, prefer a file:// URI so the portal opens the folder
+          final target = isFlatpak ? Uri.file(dir).toString() : dir;
+          Process.run('xdg-open', [target]);
+        }
+      } catch (_) {
+        // ignore errors
+      }
     }
   }
 

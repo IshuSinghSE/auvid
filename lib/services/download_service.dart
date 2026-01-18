@@ -119,6 +119,7 @@ class DownloadService {
     String quality, {
     bool extractAudio = false,
     String audioFormat = 'mp3',
+    String? desiredExt,
   }) async* {
     final cmd = _getBinaryCommandParts();
     final exe = cmd.first;
@@ -140,8 +141,11 @@ class DownloadService {
     } else {
       // Video download - use format selection that yt-dlp can handle
       // This avoids the JavaScript runtime requirement
-      args.addAll(['-S', 'res:$quality,ext:mp4:m4a']);
+      args.addAll(['-S', 'res:$quality']);
       args.addAll(['-f', 'bv*[height<=$quality]+ba/b[height<=$quality]/bv*+ba/b']);
+      if (desiredExt != null && desiredExt.isNotEmpty) {
+        args.addAll(['--merge-output-format', desiredExt]);
+      }
     }
 
     args.add(url);
