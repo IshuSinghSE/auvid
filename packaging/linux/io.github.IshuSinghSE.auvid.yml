@@ -65,7 +65,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/IshuSinghSE/auvid.git
-        commit: 76dc3294805456f50773b8341706274fbcd6a6e7
+        commit: 2672c1eea48db68701b9f6d242ca694fbac40d84
       - generated/sources/pubspec.json
     modules:
       - generated/modules/flutter-sdk-3.38.5.json

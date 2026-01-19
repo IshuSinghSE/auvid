@@ -19,16 +19,33 @@ class HomeScreen extends StatelessWidget {
       create: (_) => DownloadProvider(),
       child: Consumer<DownloadProvider>(
         builder: (context, provider, _) {
-          switch (provider.screenState) {
-            case ScreenState.input:
-              return const InputScreen();
-            case ScreenState.formatSelection:
-              return const FormatSelectionScreen();
-            case ScreenState.downloading:
-              return const DownloadingScreen();
-            case ScreenState.complete:
-              return const CompletionScreen();
-          }
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 250),
+            switchInCurve: Curves.easeInOut,
+            switchOutCurve: Curves.easeInOut,
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: Builder(
+              builder: (context) {
+                if (provider.isFetchingInfo) {
+                  return const LoadingScreen(key: ValueKey('loading'));
+                }
+
+                switch (provider.screenState) {
+                  case ScreenState.input:
+                    return const InputScreen(key: ValueKey('input'));
+                  case ScreenState.formatSelection:
+                    return const FormatSelectionScreen(key: ValueKey('format'));
+                  case ScreenState.downloading:
+                    return const DownloadingScreen(
+                      key: ValueKey('downloading'),
+                    );
+                  case ScreenState.complete:
+                    return const CompletionScreen(key: ValueKey('complete'));
+                }
+              },
+            ),
+          );
         },
       ),
     );
@@ -47,6 +64,28 @@ class InputScreen extends StatefulWidget {
 
 class _InputScreenState extends State<InputScreen> {
   final _urlController = TextEditingController();
+  final _urlRegex = RegExp(r'https?://\S+');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _urlController.addListener(() {
+        final text = _urlController.text.trim();
+        if (text.isEmpty) return;
+        if (_urlRegex.hasMatch(text)) {
+          final provider = Provider.of<DownloadProvider>(
+            context,
+            listen: false,
+          );
+          if (!provider.isFetchingInfo &&
+              provider.screenState == ScreenState.input) {
+            provider.fetchVideoInfo(text);
+          }
+        }
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -81,13 +120,12 @@ class _InputScreenState extends State<InputScreen> {
       body: Center(
         child: Container(
           width: AppConstants.inputScreenWidth,
-          constraints: const BoxConstraints(maxWidth: 800),
+          constraints: const BoxConstraints(maxWidth: 1000),
           padding: const EdgeInsets.all(AppConstants.spacingXLarge),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo and Title (not inside a card)
               Row(
                 children: [
                   Image.asset(
@@ -102,7 +140,8 @@ class _InputScreenState extends State<InputScreen> {
                       children: [
                         Text(
                           AppConstants.appTitle,
-                          style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                          style: Theme.of(context).textTheme.displayLarge
+                              ?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: -1.5,
                               ),
@@ -110,8 +149,11 @@ class _InputScreenState extends State<InputScreen> {
                         const SizedBox(height: 4),
                         Text(
                           AppConstants.appSubtitle,
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.6),
                               ),
                         ),
                       ],
@@ -120,35 +162,60 @@ class _InputScreenState extends State<InputScreen> {
                 ],
               ),
               const SizedBox(height: AppConstants.spacingXXLarge),
-              // Input Card
+
               _buildCard(
                 context,
                 child: Column(
                   children: [
-                    GlassInput(
-                      controller: _urlController,
-                      hintText: AppConstants.urlHint,
-                      prefixIcon: Icons.link,
-                      onSubmitted: (_) => provider.fetchVideoInfo(_urlController.text),
+                    Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 600),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: AppStyles.borderRadiusMedium,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 6),
+                              ),
+                            ],
+                          ),
+                          child: GlassInput(
+                            controller: _urlController,
+                            hintText: AppConstants.urlHint,
+                            prefixIcon: Icons.link,
+                            onSubmitted: (_) =>
+                                provider.fetchVideoInfo(_urlController.text),
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: AppConstants.spacingLarge),
                     ActionButton(
-                      onPressed: () => provider.fetchVideoInfo(_urlController.text),
+                      onPressed: () =>
+                          provider.fetchVideoInfo(_urlController.text),
                       label: 'Continue',
                       isLoading: provider.isFetchingInfo,
                     ),
                   ],
                 ),
               ),
+
               if (provider.statusMessage.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(top: AppConstants.spacingLarge),
+                  padding: const EdgeInsets.only(
+                    top: AppConstants.spacingLarge,
+                  ),
                   child: Text(
                     provider.statusMessage,
                     style: TextStyle(
                       color: provider.statusMessage.startsWith('Error')
                           ? Colors.red
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.6),
                       fontWeight: FontWeight.w500,
                     ),
                     textAlign: TextAlign.center,
@@ -190,6 +257,123 @@ class _InputScreenState extends State<InputScreen> {
 }
 
 // ============================================================================
+// Loading skeleton
+// ============================================================================
+class LoadingScreen extends StatefulWidget {
+  const LoadingScreen({super.key});
+
+  @override
+  State<LoadingScreen> createState() => _LoadingScreenState();
+}
+
+class _LoadingScreenState extends State<LoadingScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final base = Theme.of(context).brightness == Brightness.dark
+        ? Colors.grey.shade800
+        : Colors.grey.shade300;
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      body: Center(
+        child: Container(
+          constraints: const BoxConstraints(
+            maxWidth: AppConstants.inputScreenWidth,
+          ),
+          padding: const EdgeInsets.all(AppConstants.spacingXLarge),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? AppTheme.surface
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: AnimatedBuilder(
+              animation: _ctrl,
+              builder: (context, child) {
+                final shimmerPos = (_ctrl.value * 2) - 1;
+                return ShaderMask(
+                  shaderCallback: (rect) {
+                    return LinearGradient(
+                      begin: Alignment(-1 - shimmerPos, 0),
+                      end: Alignment(1 - shimmerPos, 0),
+                      colors: [base, base.withOpacity(0.4), base],
+                      stops: const [0.0, 0.5, 1.0],
+                    ).createShader(rect);
+                  },
+                  blendMode: BlendMode.srcATop,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        height: AppConstants.thumbnailHeight,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: base,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const SizedBox(height: 24.0),
+                      Container(
+                        height: 20,
+                        width: MediaQuery.of(context).size.width * 0.5,
+                        decoration: BoxDecoration(
+                          color: base,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        height: 14,
+                        width: MediaQuery.of(context).size.width * 0.35,
+                        decoration: BoxDecoration(
+                          color: base,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const SizedBox(height: 24.0),
+                      Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: base,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
 // FORMAT SELECTION SCREEN
 // ============================================================================
 class FormatSelectionScreen extends StatefulWidget {
@@ -210,9 +394,9 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         final provider = Provider.of<DownloadProvider>(context, listen: false);
-        provider.setMode(_tabController.index == 0
-            ? DownloadMode.audio
-            : DownloadMode.video);
+        provider.setMode(
+          _tabController.index == 0 ? DownloadMode.audio : DownloadMode.video,
+        );
       }
     });
   }
@@ -231,11 +415,15 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
     final qualityOptions = provider.getQualityOptions();
     final formatOptions = provider.getFormatOptions();
 
-    // Set default selections only on first load
-    if (provider.selectedFormat == null && qualityOptions.isNotEmpty && formatOptions.isNotEmpty) {
+    if (provider.selectedFormat == null &&
+        qualityOptions.isNotEmpty &&
+        formatOptions.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (provider.selectedFormat == null) {
-          provider.updateSelectedFormat(qualityOptions.first, formatOptions.first);
+          provider.updateSelectedFormat(
+            qualityOptions.first,
+            formatOptions.first,
+          );
         }
       });
     }
@@ -271,9 +459,17 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
               indicatorSize: TabBarIndicatorSize.tab,
               dividerColor: Colors.transparent,
               labelColor: Colors.white,
-              unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 14),
+              unselectedLabelColor: Theme.of(
+                context,
+              ).colorScheme.onSurface.withOpacity(0.6),
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 14,
+              ),
               labelPadding: const EdgeInsets.symmetric(horizontal: 12),
               tabs: const [
                 Tab(
@@ -315,42 +511,55 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
         duration: const Duration(milliseconds: 200),
         switchInCurve: Curves.easeInOut,
         switchOutCurve: Curves.easeInOut,
-        transitionBuilder: (child, animation) {
-          return FadeTransition(
-            opacity: animation,
-            child: child,
-          );
-        },
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
         child: LayoutBuilder(
           key: ValueKey('${provider.mode}_${provider.selectedQuality}'),
           builder: (context, constraints) {
-            final isWide = constraints.maxWidth > AppConstants.wideLayoutBreakpoint;
-
+            final isWide =
+                constraints.maxWidth > AppConstants.wideLayoutBreakpoint;
             if (isWide) {
               return _buildWideLayout(
-                  context, provider, qualityOptions, formatOptions);
+                context,
+                provider,
+                qualityOptions,
+                formatOptions,
+              );
             } else {
               return _buildNarrowLayout(
-                  context, provider, qualityOptions, formatOptions);
-            }
-          },
+                context,
+                provider,
+                  qualityOptions,
+                  formatOptions,
+                );
+              }
+            },
+          ),
         ),
-      ),
-    );
+      );
   }
 
-  Widget _buildWideLayout(BuildContext context, DownloadProvider provider,
-      List<String> qualityOptions, List<String> formatOptions) {
+  Widget _buildWideLayout(
+    BuildContext context,
+    DownloadProvider provider,
+    List<String> qualityOptions,
+    List<String> formatOptions,
+  ) {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
+        constraints: const BoxConstraints(
+          maxWidth: AppConstants.maxContentWidth,
+        ),
         padding: const EdgeInsets.all(AppConstants.spacingLarge),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
               flex: 2,
-              child: _buildCard(context, child: _buildVideoInfo(context, provider)),
+              child: _buildCard(
+                context,
+                child: _buildVideoInfo(context, provider),
+              ),
             ),
             const SizedBox(width: AppConstants.spacingXLarge),
             Expanded(
@@ -358,7 +567,11 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
               child: _buildCard(
                 context,
                 child: _buildDownloadOptions(
-                    context, provider, qualityOptions, formatOptions),
+                  context,
+                  provider,
+                  qualityOptions,
+                  formatOptions,
+                ),
               ),
             ),
           ],
@@ -367,8 +580,12 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
     );
   }
 
-  Widget _buildNarrowLayout(BuildContext context, DownloadProvider provider,
-      List<String> qualityOptions, List<String> formatOptions) {
+  Widget _buildNarrowLayout(
+    BuildContext context,
+    DownloadProvider provider,
+    List<String> qualityOptions,
+    List<String> formatOptions,
+  ) {
     return SingleChildScrollView(
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.spacingLarge),
@@ -379,7 +596,11 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
             _buildCard(
               context,
               child: _buildDownloadOptions(
-                  context, provider, qualityOptions, formatOptions),
+                context,
+                provider,
+                qualityOptions,
+                formatOptions,
+              ),
             ),
           ],
         ),
@@ -422,12 +643,12 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
           imageUrl: provider.videoInfo!.thumbnail,
           height: AppConstants.thumbnailHeight,
         ),
-        const SizedBox(height: AppConstants.spacingMedium),
-        Text(
+        const SizedBox(height: 24.0),
+        SelectableText(
           provider.videoInfo!.title,
           style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: AppConstants.spacingSmall),
+        const SizedBox(height: 24.0),
         if (provider.videoInfo!.uploader.isNotEmpty)
           Text(
             provider.videoInfo!.uploader,
@@ -441,10 +662,11 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
   }
 
   Widget _buildDownloadOptions(
-      BuildContext context,
-      DownloadProvider provider,
-      List<String> qualityOptions,
-      List<String> formatOptions) {
+    BuildContext context,
+    DownloadProvider provider,
+    List<String> qualityOptions,
+    List<String> formatOptions,
+  ) {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -468,7 +690,9 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
                       const SizedBox(width: AppConstants.spacingSmall),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primaryContainer,
                           borderRadius: BorderRadius.circular(4),
@@ -477,9 +701,9 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
                           'Recommended',
                           style: TextStyle(
                             fontSize: 11,
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onPrimaryContainer,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
                           ),
                         ),
                       ),
@@ -489,9 +713,8 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
               );
             }).toList(),
             onChanged: (value) {
-              if (value != null) {
+              if (value != null)
                 provider.updateSelectedFormat(value, formatOptions.first);
-              }
             },
           ),
           const SizedBox(height: AppConstants.spacingMedium),
@@ -503,17 +726,20 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
               helperText: 'Select file format',
             ),
             value: provider.selectedFormatExt,
-            items: formatOptions.map((format) {
-              return DropdownMenuItem(
-                value: format,
-                child: Text(format.toUpperCase()),
-              );
-            }).toList(),
+            items: formatOptions
+                .map(
+                  (format) => DropdownMenuItem(
+                    value: format,
+                    child: Text(format.toUpperCase()),
+                  ),
+                )
+                .toList(),
             onChanged: (value) {
-              if (value != null) {
+              if (value != null)
                 provider.updateSelectedFormat(
-                    provider.selectedQuality ?? qualityOptions.first, value);
-              }
+                  provider.selectedQuality ?? qualityOptions.first,
+                  value,
+                );
             },
           ),
           const SizedBox(height: AppConstants.spacingLarge),
@@ -521,10 +747,9 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
             Container(
               padding: const EdgeInsets.all(AppConstants.spacingMedium),
               decoration: BoxDecoration(
-                color: Theme.of(context)
-                    .colorScheme
-                    .surfaceContainerHighest
-                    .withOpacity(0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
                 borderRadius: AppStyles.borderRadiusSmall,
                 border: Border.all(
                   color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
@@ -549,22 +774,29 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
                   ),
                   const SizedBox(height: AppConstants.spacingMedium),
                   _buildInfoRow(
-                      context, 'Quality', provider.selectedFormat!.quality),
-                  _buildInfoRow(context, 'Format',
-                      provider.selectedFormat!.ext.toUpperCase()),
+                    context,
+                    'Quality',
+                    provider.selectedFormat!.quality,
+                  ),
                   _buildInfoRow(
-                      context, 'File Size', provider.selectedFormat!.filesize),
+                    context,
+                    'Format',
+                    provider.selectedFormat!.ext.toUpperCase(),
+                  ),
+                  _buildInfoRow(
+                    context,
+                    'File Size',
+                    provider.selectedFormat!.filesize,
+                  ),
                   _buildInfoRow(
                     context,
                     'Audio',
-                    provider.selectedFormat!.hasAudio
-                        ? 'Included'
-                        : 'No audio',
+                    provider.selectedFormat!.hasAudio ? 'Included' : 'No audio',
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: AppConstants.spacingLarge),
+          const SizedBox(height: 24.0),
           ActionButton(
             onPressed: provider.selectedFormat == null
                 ? null
@@ -601,10 +833,7 @@ class _FormatSelectionScreenState extends State<FormatSelectionScreen>
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w500),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -646,7 +875,9 @@ class DownloadingScreen extends StatelessWidget {
       ),
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: AppConstants.inputScreenWidth),
+          constraints: const BoxConstraints(
+            maxWidth: AppConstants.inputScreenWidth,
+          ),
           padding: const EdgeInsets.all(AppConstants.spacingXLarge),
           child: _buildCard(
             context,
@@ -658,39 +889,38 @@ class DownloadingScreen extends StatelessWidget {
                   'Downloading',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: AppConstants.spacingLarge),
+                const SizedBox(height: 24.0),
                 if (provider.videoInfo != null)
-                  Text(
+                  SelectableText(
                     provider.videoInfo!.title,
                     style: const TextStyle(fontSize: 16),
                     textAlign: TextAlign.center,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
-                const SizedBox(height: AppConstants.spacingLarge),
+                const SizedBox(height: 24.0),
                 ThumbnailPreview(
                   imageUrl: provider.videoInfo?.thumbnail ?? '',
                   width: 320,
                   height: 180,
                 ),
-                const SizedBox(height: AppConstants.spacingXLarge),
-                CoolProgressBar(
-                  progress: provider.progress,
-                  height: 10,
-                ),
+                const SizedBox(height: 24.0),
+                CoolProgressBar(progress: provider.progress, height: 10),
                 const SizedBox(height: AppConstants.spacingMedium),
                 Text(
                   '${(provider.progress * 100).toStringAsFixed(1)}%',
-                  style:
-                      const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: AppConstants.spacingSmall),
                 Text(
                   '${provider.timeRemaining} - ${provider.fileSize} (${provider.downloadSpeed})',
                   style: TextStyle(
                     fontSize: 14,
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withOpacity(0.6),
                   ),
                 ),
               ],
@@ -752,7 +982,9 @@ class CompletionScreen extends StatelessWidget {
       ),
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: AppConstants.inputScreenWidth),
+          constraints: const BoxConstraints(
+            maxWidth: AppConstants.inputScreenWidth,
+          ),
           padding: const EdgeInsets.all(AppConstants.spacingXLarge),
           child: _buildCard(
             context,
@@ -771,25 +1003,23 @@ class CompletionScreen extends StatelessWidget {
                     color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: AppConstants.spacingXLarge),
+                const SizedBox(height: 24.0),
                 const Text(
                   'Download Complete',
                   style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: AppConstants.spacingMedium),
+                const SizedBox(height: 24.0),
                 if (provider.videoInfo != null)
-                  Text(
+                  SelectableText(
                     provider.videoInfo!.title,
                     style: TextStyle(
                       fontSize: 16,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(0.6),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withOpacity(0.6),
                     ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 const SizedBox(height: AppConstants.spacingXXLarge),
                 ActionButton(

@@ -138,9 +138,12 @@ class DownloadService {
 
     // Build the command with format preferences
     final outputTemplate = '${downloadDir.path}${Platform.pathSeparator}%(title)s.%(ext)s';
+    // Ensure yt-dlp explicitly writes to the Downloads directory inside Flatpak
     final args = [
       '--newline',
       '--progress',
+      '-P',
+      downloadDir.path,
       '-o',
       outputTemplate,
     ];
@@ -259,9 +262,20 @@ class DownloadService {
     final prefixArgs = cmd.length > 1 ? cmd.sublist(1) : <String>[];
     await _ensureExecutablePermissions(exe);
 
+    // Determine download directory (prefer Downloads, works with Flatpak xdg-download permission)
+    final home = Platform.environment['HOME'] ?? Directory.current.path;
+    final downloadDir = Directory('${home}${Platform.pathSeparator}Downloads');
+    if (!downloadDir.existsSync()) {
+      try {
+        downloadDir.createSync(recursive: true);
+      } catch (_) {}
+    }
+
     // Build the command
     final args = [
       '--newline',
+      '-P',
+      downloadDir.path,
       '-f',
       _getFormatString(quality),
       url,

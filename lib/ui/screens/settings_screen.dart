@@ -15,133 +15,144 @@ class SettingsScreen extends StatelessWidget {
       builder: (context, settings, _) {
         return Scaffold(
           backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: const Text(
-              "Settings",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          body: Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 800),
-              child: ListView(
-                padding: const EdgeInsets.all(24),
-                children: [
-                  // GENERAL SECTION
-                  _buildSectionHeader(context, "GENERAL"),
-                  _buildSettingsCard(
-                    context: context,
-                    children: [
-                      _buildTile(
-                        context: context,
-                        icon: Icons.folder_open_rounded,
-                        title: "Download Location",
-                        subtitle: settings.getDisplayPath(),
-                        onTap: () => _selectDownloadFolder(context, settings),
-                      ),
-                      _buildDivider(context),
-                      _buildDropdownTile(
-                        context: context,
-                        icon: Icons.hd_outlined,
-                        title: "Default Quality",
-                        value: settings.defaultQuality,
-                        items: settings.qualityOptions,
-                        onChanged: (val) {
-                          if (val != null) settings.setDefaultQuality(val);
-                        },
-                      ),
-                      _buildDivider(context),
-                      _buildDropdownTile(
-                        context: context,
-                        icon: Icons.movie_outlined,
-                        title: "Default Video Format",
-                        value: settings.defaultVideoFormat.toUpperCase(),
-                        items: settings.videoFormatOptions.map((e) => e.toUpperCase()).toList(),
-                        onChanged: (val) {
-                          if (val != null) settings.setDefaultVideoFormat(val.toLowerCase());
-                        },
-                      ),
-                      _buildDivider(context),
-                      _buildDropdownTile(
-                        context: context,
-                        icon: Icons.audio_file_outlined,
-                        title: "Default Audio Format",
-                        value: settings.defaultAudioFormat.toUpperCase(),
-                        items: settings.audioFormatOptions.map((e) => e.toUpperCase()).toList(),
-                        onChanged: (val) {
-                          if (val != null) settings.setDefaultAudioFormat(val.toLowerCase());
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // APPEARANCE SECTION
-                  _buildSectionHeader(context, "APPEARANCE"),
-                  _buildSettingsCard(
-                    context: context,
-                    children: [
-                      _buildDropdownTile(
-                        context: context,
-                        icon: Icons.brightness_6_outlined,
-                        title: "Theme",
-                        value: settings.themeMode[0].toUpperCase() + settings.themeMode.substring(1),
-                        items: settings.themeModeOptions,
-                        onChanged: (val) {
-                          if (val != null) settings.setThemeMode(val);
-                        },
-                      ),
-                      _buildDivider(context),
-                      _buildTile(
-                        context: context,
-                        icon: Icons.palette_outlined,
-                        title: "Accent Color",
-                        subtitle: "Auvid Purple",
-                        trailing: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).primaryColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, width: 2),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 32),
-
-                  // SYSTEM & ABOUT
-                  _buildSectionHeader(context, "SYSTEM"),
-                  _buildSettingsCard(
-                    context: context,
-                    children: [
-                      _buildTile(
-                        context: context,
-                        icon: Icons.info_outline_rounded,
-                        title: "About",
-                        subtitle: "v1.0.0",
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const AboutScreen()),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 50),
-                ],
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                floating: true,
+                snap: false,
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                title: const Text(
+                  "Settings",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
               ),
-            ),
+              SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // GENERAL SECTION
+                          _buildSectionHeader(context, "GENERAL"),
+                          _buildSettingsCard(
+                            context: context,
+                            children: [
+                              _buildTile(
+                                context: context,
+                                icon: Icons.folder_open_rounded,
+                                title: "Download Location",
+                                subtitle: settings.getDisplayPath(),
+                                onTap: () => _selectDownloadFolder(context, settings),
+                              ),
+                              _buildDivider(context),
+                              _buildDropdownTile(
+                                context: context,
+                                icon: Icons.hd_outlined,
+                                title: "Default Quality",
+                                value: settings.defaultQuality,
+                                items: settings.qualityOptions,
+                                onChanged: (val) {
+                                  if (val != null) settings.setDefaultQuality(val);
+                                },
+                              ),
+                              _buildDivider(context),
+                              _buildDropdownTile(
+                                context: context,
+                                icon: Icons.movie_outlined,
+                                title: "Default Video Format",
+                                value: settings.defaultVideoFormat.toUpperCase(),
+                                items: settings.videoFormatOptions.map((e) => e.toUpperCase()).toList(),
+                                onChanged: (val) {
+                                  if (val != null) settings.setDefaultVideoFormat(val.toLowerCase());
+                                },
+                              ),
+                              _buildDivider(context),
+                              _buildDropdownTile(
+                                context: context,
+                                icon: Icons.audio_file_outlined,
+                                title: "Default Audio Format",
+                                value: settings.defaultAudioFormat.toUpperCase(),
+                                items: settings.audioFormatOptions.map((e) => e.toUpperCase()).toList(),
+                                onChanged: (val) {
+                                  if (val != null) settings.setDefaultAudioFormat(val.toLowerCase());
+                                },
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // APPEARANCE SECTION
+                          _buildSectionHeader(context, "APPEARANCE"),
+                          _buildSettingsCard(
+                            context: context,
+                            children: [
+                              _buildDropdownTile(
+                                context: context,
+                                icon: Icons.brightness_6_outlined,
+                                title: "Theme",
+                                value: settings.themeMode[0].toUpperCase() + settings.themeMode.substring(1),
+                                items: settings.themeModeOptions,
+                                onChanged: (val) {
+                                  if (val != null) settings.setThemeMode(val);
+                                },
+                              ),
+                              _buildDivider(context),
+                              _buildTile(
+                                context: context,
+                                icon: Icons.palette_outlined,
+                                title: "Accent Color",
+                                subtitle: "Auvid Purple",
+                                trailing: Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context).primaryColor,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, width: 2),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // SYSTEM & ABOUT
+                          _buildSectionHeader(context, "SYSTEM"),
+                          _buildSettingsCard(
+                            context: context,
+                            children: [
+                              _buildTile(
+                                context: context,
+                                icon: Icons.info_outline_rounded,
+                                title: "About",
+                                subtitle: "v1.0.0",
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(builder: (_) => const AboutScreen()),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 50),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         );
       },
