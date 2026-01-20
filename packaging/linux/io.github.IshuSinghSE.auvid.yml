@@ -16,18 +16,6 @@ finish-args:
   - --filesystem=xdg-download
   - --talk-name=org.freedesktop.Notifications
 modules:
-  - name: ffmpeg-static
-    buildsystem: simple
-    build-commands:
-      - mkdir -p ffmpeg-tmp
-      - wget -O ffmpeg-static.tar.xz https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-      - tar -xJf ffmpeg-static.tar.xz -C ffmpeg-tmp --strip-components=1
-      - install -Dm755 ffmpeg-tmp/ffmpeg /app/bin/ffmpeg
-      - install -Dm755 ffmpeg-tmp/ffprobe /app/bin/ffprobe
-    sources:
-      - type: file
-        url: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-        sha256 : abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67
   - name: python3-yt-dlp
     buildsystem: simple
     build-commands:
@@ -37,6 +25,16 @@ modules:
       - type: file
         url: https://files.pythonhosted.org/packages/6e/2f/98c3596ad923f8efd32c90dca62e241e8ad9efcebf20831173c357042ba0/yt_dlp-2025.12.8-py3-none-any.whl
         sha256: 36e2584342e409cfbfa0b5e61448a1c5189e345cf4564294456ee509e7d3e065
+  - name: ffmpeg
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 $(find . -name ffmpeg -type f -executable | head -n1) /app/bin/ffmpeg
+      - install -Dm755 $(find . -name ffprobe -type f -executable | head -n1) /app/bin/ffprobe
+    sources:
+      - type: archive
+        url: https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+        sha256: abda8d77ce8309141f83ab8edf0596834087c52467f6badf376a6a2a4c87cf67
+        strip-components: 1
   - name: auvid
     buildsystem: simple
     build-options:
@@ -65,7 +63,7 @@ modules:
     sources:
       - type: git
         url: https://github.com/IshuSinghSE/auvid.git
-        commit: 2672c1eea48db68701b9f6d242ca694fbac40d84
+        commit: af20304901063360fabd8ad528304f40c2e57c4c
       - generated/sources/pubspec.json
     modules:
       - generated/modules/flutter-sdk-3.38.5.json

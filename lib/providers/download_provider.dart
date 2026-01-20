@@ -132,6 +132,7 @@ class DownloadProvider extends ChangeNotifier {
         extractAudio: _extractAudio,
         audioFormat: _audioFormat,
         desiredExt: _selectedFormatExt,
+        formatId: _selectedFormat?.formatId,
       )) {
         _progress = data['progress'] ?? 0.0;
         _downloadSpeed = data['speed'] ?? '';

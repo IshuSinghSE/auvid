@@ -120,6 +120,7 @@ class DownloadService {
     bool extractAudio = false,
     String audioFormat = 'mp3',
     String? desiredExt,
+    String? formatId,
   }) async* {
     final cmd = _getBinaryCommandParts();
     final exe = cmd.first;
@@ -148,15 +149,20 @@ class DownloadService {
       outputTemplate,
     ];
 
-    if (extractAudio) {
+    if (formatId != null && formatId.isNotEmpty) {
+      // If a specific yt-dlp format id is provided, prefer it.
+      args.addAll(['-f', formatId]);
+      if (desiredExt != null && desiredExt.isNotEmpty) {
+        args.addAll(['--merge-output-format', desiredExt]);
+      }
+    } else if (extractAudio) {
       // Extract audio from video
       args.addAll(['-x', '--audio-format', audioFormat]);
       args.addAll(['-f', 'bestaudio/best']);
     } else {
-      // Video download - use format selection that yt-dlp can handle
-      // This avoids the JavaScript runtime requirement
+      // Video download - build a conservative format selector using height
       args.addAll(['-S', 'res:$quality']);
-      args.addAll(['-f', 'bv*[height<=$quality]+ba/b[height<=$quality]/bv*+ba/b']);
+      args.addAll(['-f', 'bestvideo[height<=$quality]+bestaudio/best']);
       if (desiredExt != null && desiredExt.isNotEmpty) {
         args.addAll(['--merge-output-format', desiredExt]);
       }
@@ -191,6 +197,7 @@ class DownloadService {
     final destinationRegex = RegExp(r'\[download\] Destination: (.+)');
     final mergerRegex = RegExp(r'\[Merger\] Merging formats into\s+"?([^"\n]+)"?');
     final deletingRegex = RegExp(r'Deleting original file (.+) \(pass -k to keep\)');
+    final alreadyDownloadedRegex = RegExp(r'\[download\]\s+(.+?)\s+has already been downloaded');
 
     String currentPath = '';
     
@@ -213,6 +220,12 @@ class DownloadService {
       final delMatch = deletingRegex.firstMatch(line);
       if (delMatch != null && currentPath.isEmpty) {
         currentPath = delMatch.group(1) ?? '';
+      }
+
+      // Handle case where yt-dlp reports the file "has already been downloaded"
+      final alreadyMatch = alreadyDownloadedRegex.firstMatch(line);
+      if (alreadyMatch != null) {
+        currentPath = alreadyMatch.group(1)?.trim() ?? currentPath;
       }
 
       // Extract progress percentage
@@ -255,7 +268,7 @@ class DownloadService {
     };
   }
 
-  Stream<double> downloadVideo(String url, String quality) async* {
+  Stream<double> downloadVideo(String url, String quality, {String? formatId}) async* {
     // Locate the yt-dlp binary
     final cmd = _getBinaryCommandParts();
     final exe = cmd.first;
@@ -276,10 +289,14 @@ class DownloadService {
       '--newline',
       '-P',
       downloadDir.path,
-      '-f',
-      _getFormatString(quality),
       url,
     ];
+
+    if (formatId != null && formatId.isNotEmpty) {
+      args.insertAll(3, ['-f', formatId]);
+    } else {
+      args.insertAll(3, ['-f', _getFormatString(quality)]);
+    }
 
     // Spawn the background process
     final process = await Process.start(exe, [...prefixArgs, ...args]);
