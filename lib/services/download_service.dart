@@ -138,15 +138,14 @@ class DownloadService {
     }
 
     // Build the command with format preferences
-    final outputTemplate = '${downloadDir.path}${Platform.pathSeparator}%(title)s.%(ext)s';
-    // Ensure yt-dlp explicitly writes to the Downloads directory inside Flatpak
+    // Use -P for directory and -o with RELATIVE path only (no folder prefix)
     final args = [
       '--newline',
       '--progress',
       '-P',
       downloadDir.path,
       '-o',
-      outputTemplate,
+      '%(title)s.%(ext)s',  // Relative filename only, -P handles the directory
     ];
 
     if (formatId != null && formatId.isNotEmpty) {
