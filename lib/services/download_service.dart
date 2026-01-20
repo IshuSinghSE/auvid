@@ -142,6 +142,8 @@ class DownloadService {
     final args = [
       '--newline',
       '--progress',
+      '--js-runtimes',
+      'deno',
       '-P',
       downloadDir.path,
       '-o',
